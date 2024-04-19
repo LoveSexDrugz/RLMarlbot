@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "rlnexto-python"
-version = "0.1.0"
+version = "1.0.0"
 description = ""
 authors = ["MarlburroW <nik0o@hotmail.com>"]
 readme = "README.md"

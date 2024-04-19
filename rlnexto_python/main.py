@@ -9,12 +9,12 @@ from prompt_toolkit import prompt
 import struct
 from threading import  Event
 from memory_writer import memory_writer
-from colorama import Fore, Back, Style
+from colorama import Fore, Back, Style, just_fix_windows_console
 import json
 
 class NextoBot:
     def __init__(self):
-
+        just_fix_windows_console()
         print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.0" + Style.RESET_ALL)
 
         self.config = {
