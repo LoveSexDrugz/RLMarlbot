@@ -4,8 +4,8 @@ Nexto bot based on my python SDK: https://github.com/MarlBurroW/RLSDK-Python
 
 ## Requirements
 
-Poetry: https://python-poetry.org/ to install dependencies
-RocketLeague Epic (x64) running
+- Poetry: https://python-poetry.org/ to install dependencies
+- RocketLeague Epic (x64) running
 
 ## Installation
 
