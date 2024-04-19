@@ -4,8 +4,8 @@ Nexto bot based on my python SDK: https://github.com/MarlBurroW/RLSDK-Python
 
 ## Requirements
 
-- Poetry: https://python-poetry.org/ to install dependencies
-- RocketLeague Epic (x64) running
+Poetry: https://python-poetry.org/ to install dependencies
+RocketLeague Epic (x64) running
 
 ## Installation
 
@@ -23,7 +23,12 @@ poetry install
 poetry shell
 
 # Run the game before running the script 
-# Run the script
 python .\rlnexto_python\main.py
 ```
 
+## How does it works ?
+
+RLMarlbot is a bot that uses the RLSDK Python package to read data from RocketLeague.exe. 
+It uses the data to build a GameTickPacket (Structure of data defined by RLBot framework) and put the data into the [Nexto RLBot agent](https://github.com/Rolv-Arild/Necto/tree/master/rlbot-support/Nexto). 
+The Agent compute data in the AI torch model and return a SimpleControllerState that contains the car inputs data.
+Then inputs are written in the game memory with a native python library written in C++ (memory_writer.pyd) to be able to overwrite car inputs faster than the game loop. 
