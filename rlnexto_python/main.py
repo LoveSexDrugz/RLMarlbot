@@ -36,6 +36,7 @@ class NextoBot:
 
         print(Fore.LIGHTYELLOW_EX + "You can change the settings in config.json" + Style.RESET_ALL)
         print(Fore.CYAN + "For keys binding, you can find values here: https://nerivec.github.io/old-ue4-wiki/pages/list-of-keygamepad-input-names.html" + Style.RESET_ALL)
+        print(Fore.LIGHTYELLOW_EX + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort" + Style.RESET_ALL)
 
         self.start()
         
