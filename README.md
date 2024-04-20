@@ -1,6 +1,6 @@
 RLMarlbot
 
-Nexto bot based on my python SDK: https://github.com/MarlBurroW/RLSDK-Python
+Nexto bot based on my python SDK: https://github.com/MarlBurroW/RLSDK-Python.
 I recommend to look at the RLSDK-Python repository to understand how the bot works.
 
 Requirements
