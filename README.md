@@ -25,6 +25,17 @@ poetry shell
 python .\rlnexto_python\main.py
 ```
 
-# How does it works ?
+## Updates
+If the repo is not up to date, you must git pull and update dependencies:
+```bash
+# get latest changes
+git pull
+# Update dependencies
+poetry install
+```
+
+
+
+## How does it works ?
 
 RLMarlbot is a bot that uses the RLSDK Python package to read data from RocketLeague.exe. It uses the data to build a GameTickPacket (Structure of data defined by RLBot framework) and put the data into the Nexto RLBot agent. The Agent compute data in the AI torch model and return a SimpleControllerState that contains the car inputs data. Then inputs are written in the game memory with a native python library written in C++ (memory_writer.pyd) to be able to overwrite car inputs faster than the game loop.
