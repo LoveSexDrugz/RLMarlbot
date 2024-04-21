@@ -401,16 +401,18 @@ class NextoBot:
 
             player_pri = player_controller.get_pri()
             player_name = player_pri.get_player_name()
-            player_car = player_pri.get_car()
+            
+            
+            pris = game_event.get_pris()
 
         
 
             cars = game_event.get_cars()
 
-            for i, car in enumerate(cars):
-                if car.address == player_car.address:
-                    car_index = i
-                    print("Player car index: ", car_index)
+            for i, pri in enumerate(pris):
+                if pri.address == player_pri.address:
+                    pri_index = i
+                    print("Player car index: ", pri_index)
                     break
             else:
                 raise Exception("Player car not found")
@@ -418,7 +420,7 @@ class NextoBot:
             team_index = player_pri.get_team_info().get_index()
 
 
-            self.nexto = Nexto(player_name, team_index, car_index)
+            self.nexto = Nexto(player_name, team_index, pri_index)
             self.nexto.initialize_agent(self.field_info)
             print(Fore.LIGHTGREEN_EX + "Nexto enabled" + Style.RESET_ALL)
 
