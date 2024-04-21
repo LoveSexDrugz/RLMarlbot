@@ -14,7 +14,8 @@ torch = "^2.2.2"
 colorama = "^0.4.6"
 prompt-toolkit = "^3.0.43"
 pyinstaller = "^6.6.0"
-rlsdk-python = "^0.1.0"
+pygame = "^2.5.2"
+rlsdk-python = "^0.1.1"
 
 [build-system]
 requires = ["poetry-core"]

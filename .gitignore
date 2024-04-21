@@ -2,3 +2,4 @@ dist
 build
 functions.txt
 config.json
+__pycache__

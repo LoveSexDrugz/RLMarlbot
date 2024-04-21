@@ -11,6 +11,9 @@ from threading import  Event
 from memory_writer import memory_writer
 from colorama import Fore, Back, Style, just_fix_windows_console
 import json
+from map import MiniMap
+from  threading import Thread
+import signal
 
 class NextoBot:
     def __init__(self):
@@ -38,6 +41,7 @@ class NextoBot:
         print(Fore.CYAN + "For keys binding, you can find values here: https://nerivec.github.io/old-ue4-wiki/pages/list-of-keygamepad-input-names.html" + Style.RESET_ALL)
         print(Fore.LIGHTYELLOW_EX + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort" + Style.RESET_ALL)
 
+        
         self.start()
         
 
@@ -49,6 +53,16 @@ class NextoBot:
             print(Fore.RED + "Failed to start SDK: ", e, Style.RESET_ALL)
             exit()
         
+        
+        
+        self.minimap = MiniMap(sdk=self.sdk)
+        
+        # start a new thread for the minimap main loop
+        
+        self.minimap_thread = Thread(target=self.minimap.main)
+        self.minimap_thread.daemon = True
+        self.minimap_thread.start()
+
    
         print(Fore.LIGHTBLUE_EX + "Starting memory writer..." + Style.RESET_ALL)
 
@@ -130,6 +144,8 @@ class NextoBot:
                     return
                 simple_controller_state = self.nexto.get_output(game_tick_packet)
                 bytearray_input = self.controller_to_input(simple_controller_state)
+                
+                
 
 
                 # print(chr(27) + "[2J")
@@ -180,7 +196,11 @@ class NextoBot:
                             self.write_running = True
                             print(Fore.LIGHTBLUE_EX + "Starting memory write thread..." + Style.RESET_ALL)
                             self.mw.start()
-
+                
+               
+                self.minimap.set_game_tick_packet(game_tick_packet)
+          
+ 
     def controller_to_input(self, controller: SimpleControllerState):
          # convert controller (numpy) to FVehicleInputs bytes representation
         inputs = bytearray(32)
@@ -256,52 +276,65 @@ class NextoBot:
 
         game_tick_packet.game_info = game_info
 
-        cars : list[Car] = game_event.get_cars()
 
-        game_tick_packet.num_cars = len(cars)
+        pris = game_event.get_pris()
+
+        game_tick_packet.num_cars = len(pris)
 
         player_info_array_type = PlayerInfo * 64
 
         player_info_array = player_info_array_type()
 
-        for i, car in enumerate(cars):
+        for i, pri in enumerate(pris):
             player_info = PlayerInfo()
-
-            pri: PRI = car.get_pri()
-            team_info = pri.get_team_info()
-
-            player_info.physics.location.x = car.get_location().get_x()
-            player_info.physics.location.y = car.get_location().get_y()
-            player_info.physics.location.z = car.get_location().get_z()
-
-            player_info.physics.velocity.x = car.get_velocity().get_x()
-            player_info.physics.velocity.y = car.get_velocity().get_y()
-            player_info.physics.velocity.z = car.get_velocity().get_z()
-
-            player_info.physics.rotation.pitch = car.get_rotation().get_pitch()
-            player_info.physics.rotation.yaw = car.get_rotation().get_yaw()
-            player_info.physics.rotation.roll = car.get_rotation().get_roll()
-
-            player_info.physics.angular_velocity.x = car.get_angular_velocity().get_x()
-            player_info.physics.angular_velocity.y = car.get_angular_velocity().get_y()
-            player_info.physics.angular_velocity.z = car.get_angular_velocity().get_z()
-
-            player_info.team = team_info.get_index()
-            player_info.has_wheel_contact = car.is_on_ground()
-            player_info.is_super_sonic = car.is_supersonic()
-            # player_info.jumped = car.is_jumped()
-            player_info.double_jumped = car.is_double_jumped()
-            player_info.is_demolished = False
-
-            boost_component = car.get_boost_component()
-            try:
-                player_info.boost = int(boost_component.get_amount() * 100)
-            except:
-                player_info.boost = 0
             
+            
+            car: Car = pri.get_car()
+            team_info = pri.get_team_info()
+            
+            if car:
+
+                player_info.physics.location.x = car.get_location().get_x()
+                player_info.physics.location.y = car.get_location().get_y()
+                player_info.physics.location.z = car.get_location().get_z()
+
+                player_info.physics.velocity.x = car.get_velocity().get_x()
+                player_info.physics.velocity.y = car.get_velocity().get_y()
+                player_info.physics.velocity.z = car.get_velocity().get_z()
+
+                player_info.physics.rotation.pitch = car.get_rotation().get_pitch()
+                player_info.physics.rotation.yaw = car.get_rotation().get_yaw()
+                player_info.physics.rotation.roll = car.get_rotation().get_roll()
+
+                player_info.physics.angular_velocity.x = car.get_angular_velocity().get_x()
+                player_info.physics.angular_velocity.y = car.get_angular_velocity().get_y()
+                player_info.physics.angular_velocity.z = car.get_angular_velocity().get_z()
+
+                player_info.has_wheel_contact = car.is_on_ground()
+                player_info.is_super_sonic = car.is_supersonic()
+                
+                player_info.double_jumped = car.is_double_jumped()
+                
+                boost_component = car.get_boost_component()
+                try:
+                    player_info.boost = int(boost_component.get_amount() * 100)
+                except:
+                    player_info.boost = 0
+            else:
+                player_info.is_demolished = False
+                    
+            player_info.team = team_info.get_index()
+   
+            # player_info.jumped = car.is_jumped()
+            
+            
+
             player_info.name = pri.get_player_name()
             
             player_info_array[i] = player_info
+            
+            
+            
 
         game_tick_packet.game_cars = player_info_array
 
@@ -324,7 +357,7 @@ class NextoBot:
 
         boostpads = self.sdk.field.boostpads
 
-        game_tick_packet.num_boosts = len(boostpads)
+        game_tick_packet.num_boost = len(boostpads)
 
         boostpad_array_type = BoostPadState * 50
 
@@ -339,9 +372,11 @@ class NextoBot:
             else:
                 boostpad_state.timer = 0
             boostpad_array[i] = boostpad_state
-
+      
         game_tick_packet.game_boosts = boostpad_array
-        game_tick_packet.teams = team_info_array
+        
+        
+        
 
         return game_tick_packet
 
@@ -467,8 +502,21 @@ class NextoBot:
         packet.goals = goal_array
 
         return packet
+    
+    
+    def exit(self, signum, frame):
+        self.minimap.running = False
+        self.minimap_thread.join()
+        sys.exit(0)
 
 
 if __name__ == '__main__':
     bot = NextoBot()
-    sys.stdin.read()
+    signal.signal(signal.SIGINT, bot.exit)
+    
+    try:
+        sys.stdin.read()
+    except KeyboardInterrupt:
+        bot.minimap_thread.join()
+        sys.exit(0)
+        
