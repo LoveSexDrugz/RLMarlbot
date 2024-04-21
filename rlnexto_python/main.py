@@ -11,7 +11,7 @@ from threading import  Event
 from memory_writer import memory_writer
 from colorama import Fore, Back, Style, just_fix_windows_console
 import json
-from map import MiniMap
+from rlnexto_python.map import MiniMap
 from  threading import Thread
 import signal
 
