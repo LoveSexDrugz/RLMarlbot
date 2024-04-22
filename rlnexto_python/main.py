@@ -413,7 +413,7 @@ class NextoBot:
             elif self.bot_to_use == "seer":
                 self.bot = Seer(player_name, team_index, pri_index)
                 self.bot.initialize_agent()
-                print(Fore.LIGHTGREEN_EX + "Nexto enabled" + Style.RESET_ALL)
+                print(Fore.LIGHTGREEN_EX + "Seer enabled" + Style.RESET_ALL)
 
 
     def disable_bot(self):
@@ -422,7 +422,7 @@ class NextoBot:
         self.last_input = None
         self.input_address = None
         self.frame_num = 0
-        print(Fore.LIGHTRED_EX + "Nexto disabled" + Style.RESET_ALL)
+        print(Fore.LIGHTRED_EX + "Bot disabled" + Style.RESET_ALL)
         self.minimap.disable()
 
     def on_key_pressed(self, event):
@@ -438,7 +438,7 @@ class NextoBot:
                     try:
                         self.enable_bot()
                     except Exception as e:
-                        print(Fore.RED + "Failed to enable Nexto: ", e, Style.RESET_ALL)
+                        print(Fore.RED + "Failed to enable bot: ", e, Style.RESET_ALL)
                         self.disable_bot()
   
 
