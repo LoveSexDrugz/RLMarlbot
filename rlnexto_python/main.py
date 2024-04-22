@@ -1,6 +1,7 @@
 from rlsdk_python import RLSDK, EventTypes, GameEvent, PRI, Ball, Car
 from rlsdk_python.events import EventPlayerTick
 from nexto.bot import Nexto
+from seer.bot import Seer
 from rlbot.utils.structures.game_data_struct import BallInfo, Vector3, Rotator, FieldInfoPacket, BoostPad, GoalInfo, GameTickPacket, Physics, GameInfo, TileInfo, TeamInfo, PlayerInfo, BoostPadState
 import sys
 import time
@@ -41,6 +42,24 @@ class NextoBot:
         print(Fore.CYAN + "For keys binding, you can find values here: https://nerivec.github.io/old-ue4-wiki/pages/list-of-keygamepad-input-names.html" + Style.RESET_ALL)
         print(Fore.LIGHTYELLOW_EX + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort" + Style.RESET_ALL)
 
+        self.bot_to_use = None
+        
+        print(Fore.GREEN + "Select the bot to use:" + Style.RESET_ALL)
+        print("1. Nexto")
+        print("2. Seer (BETA)")
+        
+        answer = prompt("Your choice (1/2): ")
+        
+        if answer == "1":
+            self.bot_to_use = "nexto"
+        elif answer == "2":
+            self.bot_to_use = "seer"
+        else:
+            print(Fore.RED + "Invalid bot selected" + Style.RESET_ALL)
+            exit()
+        
+        
+        
         
         self.start()
         
@@ -80,7 +99,7 @@ class NextoBot:
         
         self.frame_num = 0
 
-        self.nexto = None
+        self.bot = None
         self.field_info = None
 
         self.last_input = None
@@ -99,7 +118,7 @@ class NextoBot:
         print(Fore.LIGHTRED_EX + "Game event destroyed" + Style.RESET_ALL)
         self.reset_virtual_seconds_elapsed()
         
-        self.disable_nexto()
+        self.disable_bot()
 
     def stop_writing(self):
         self.write_running = False
@@ -129,7 +148,7 @@ class NextoBot:
         if not self.field_info and self.sdk.current_game_event:
             self.generate_field_info()
 
-        if self.nexto:
+        if self.bot:
             
             self.frame_num += 1
             game_event = self.sdk.current_game_event
@@ -142,7 +161,7 @@ class NextoBot:
                 except Exception as e:
                     print(Fore.RED + "Failed to generate game tick packet: ", e, Style.RESET_ALL)
                     return
-                simple_controller_state = self.nexto.get_output(game_tick_packet)
+                simple_controller_state = self.bot.get_output(game_tick_packet)
                 bytearray_input = self.controller_to_input(simple_controller_state)
 
                 local_players = game_event.get_local_players()
@@ -164,8 +183,8 @@ class NextoBot:
                             print(Fore.LIGHTBLUE_EX + "Starting memory write thread..." + Style.RESET_ALL)
                             self.mw.start()
                 
-                if self.nexto:
-                    self.minimap.set_game_tick_packet(game_tick_packet, self.nexto.index)
+                if self.bot:
+                    self.minimap.set_game_tick_packet(game_tick_packet, self.bot.index)
           
  
     def controller_to_input(self, controller: SimpleControllerState):
@@ -350,7 +369,7 @@ class NextoBot:
 
 
  
-    def enable_nexto(self):
+    def enable_bot(self):
         game_event = self.sdk.get_game_event()
         self.frame_num = 0
 
@@ -385,15 +404,20 @@ class NextoBot:
                 raise Exception("Player car not found")
 
             team_index = player_pri.get_team_info().get_index()
+            
+            if self.bot_to_use == "nexto":
+                self.bot = Nexto(player_name, team_index, pri_index)
+                self.bot.initialize_agent(self.field_info)
+                print(Fore.LIGHTGREEN_EX + "Nexto enabled" + Style.RESET_ALL)
+            
+            elif self.bot_to_use == "seer":
+                self.bot = Seer(player_name, team_index, pri_index)
+                self.bot.initialize_agent()
+                print(Fore.LIGHTGREEN_EX + "Nexto enabled" + Style.RESET_ALL)
 
 
-            self.nexto = Nexto(player_name, team_index, pri_index)
-            self.nexto.initialize_agent(self.field_info)
-            print(Fore.LIGHTGREEN_EX + "Nexto enabled" + Style.RESET_ALL)
-
-
-    def disable_nexto(self):
-        self.nexto = None
+    def disable_bot(self):
+        self.bot = None
         self.stop_writing()
         self.last_input = None
         self.input_address = None
@@ -408,14 +432,14 @@ class NextoBot:
         if event.key == self.config["bot_toggle_key"] :
 
             if event.type == "pressed":
-                if self.nexto:
-                    self.disable_nexto()
+                if self.bot:
+                    self.disable_bot()
                 else:
                     try:
-                        self.enable_nexto()
+                        self.enable_bot()
                     except Exception as e:
                         print(Fore.RED + "Failed to enable Nexto: ", e, Style.RESET_ALL)
-                        self.disable_nexto()
+                        self.disable_bot()
   
 
     def get_field_info(self):
