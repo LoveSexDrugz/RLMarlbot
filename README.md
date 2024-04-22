@@ -6,6 +6,7 @@ I recommend to look at the RLSDK-Python repository to understand how the bot wor
 ## Requirements
 - [Poetry](https://python-poetry.org/) to install dependencies
 - RocketLeague Epic (x64) running
+- Python 3.11.0 (x64)
 ## Installation
 
 ```bash	
