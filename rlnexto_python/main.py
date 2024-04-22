@@ -18,7 +18,7 @@ import signal
 class NextoBot:
     def __init__(self):
         just_fix_windows_console()
-        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.0" + Style.RESET_ALL)
+        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.1.1" + Style.RESET_ALL)
 
         self.config = {
             "bot_toggle_key": "F1"
@@ -144,39 +144,6 @@ class NextoBot:
                     return
                 simple_controller_state = self.nexto.get_output(game_tick_packet)
                 bytearray_input = self.controller_to_input(simple_controller_state)
-                
-                
-
-
-                # print(chr(27) + "[2J")
-                # # Show game info
-                # print("Frame: ", self.frame_num)
-                # print("Seconds elapsed: ", game_tick_packet.game_info.seconds_elapsed)
-                # print("Game time remaining: ", game_tick_packet.game_info.game_time_remaining)
-                # print("Is overtime: ", game_tick_packet.game_info.is_overtime)
-                # print("Is round active: ", game_tick_packet.game_info.is_round_active)
-                # print("Is unlimited time: ", game_tick_packet.game_info.is_unlimited_time)
-                # print("Is match ended: ", game_tick_packet.game_info.is_match_ended)
-                # print("Is kickoff pause: ", game_tick_packet.game_info.is_kickoff_pause)
-                # print("Game speed: ", game_tick_packet.game_info.game_speed)
-                # print("World gravity z: ", game_tick_packet.game_info.world_gravity_z)
-                # print("Num cars: ", game_tick_packet.num_cars)
-                # print("Num teams: ", game_tick_packet.num_teams)
-                # print("Game Event Address: ", game_event.address)
-
-                # clear console
-                # print("\033c", end="")
-                
-                # print("Frame: ", self.frame_num)
-
-                # print("Throttle: ", simple_controller_state.throttle)
-                # print("Steer: ", simple_controller_state.steer)
-                # print("Pitch: ", simple_controller_state.pitch)
-                # print("Yaw: ", simple_controller_state.yaw)
-                # print("Roll: ", simple_controller_state.roll)
-                # print("Jump: ", simple_controller_state.jump)
-                # print("Boost: ", simple_controller_state.boost)
-                # print("Handbrake: ", simple_controller_state.handbrake)
 
                 local_players = game_event.get_local_players()
              
@@ -197,8 +164,8 @@ class NextoBot:
                             print(Fore.LIGHTBLUE_EX + "Starting memory write thread..." + Style.RESET_ALL)
                             self.mw.start()
                 
-               
-                self.minimap.set_game_tick_packet(game_tick_packet)
+                if self.nexto:
+                    self.minimap.set_game_tick_packet(game_tick_packet, self.nexto.index)
           
  
     def controller_to_input(self, controller: SimpleControllerState):
@@ -273,6 +240,7 @@ class NextoBot:
         game_info.is_match_ended = game_event.is_match_ended()
         game_info.world_gravity_z = 1.0
         game_info.is_kickoff_pause = True if game_info.is_round_active and game_tick_packet.game_ball and game_tick_packet.game_ball.physics.location.x == 0 and game_tick_packet.game_ball.physics.location.y == 0 else False
+        game_info.frame_num = self.frame_num
 
         game_tick_packet.game_info = game_info
 
@@ -384,6 +352,7 @@ class NextoBot:
  
     def enable_nexto(self):
         game_event = self.sdk.get_game_event()
+        self.frame_num = 0
 
         if game_event:
             game_event = self.sdk.get_game_event()
@@ -404,8 +373,6 @@ class NextoBot:
             
             
             pris = game_event.get_pris()
-
-        
 
             cars = game_event.get_cars()
 
@@ -432,6 +399,7 @@ class NextoBot:
         self.input_address = None
         self.frame_num = 0
         print(Fore.LIGHTRED_EX + "Nexto disabled" + Style.RESET_ALL)
+        self.minimap.disable()
 
     def on_key_pressed(self, event):
 

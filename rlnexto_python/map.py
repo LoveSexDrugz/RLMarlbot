@@ -11,10 +11,10 @@ from rlbot.utils.structures.game_data_struct import GameTickPacket, PlayerInfo
 from rlsdk_python import RLSDK
 
 class MiniMap:
-    def __init__(self, sdk: RLSDK=None):
+    def __init__(self, sdk: RLSDK=None, player_index=0):
 
         self.time = time.time()
-        self.frame_num = 0
+
         self.running = False
         self.padding = 500
         self.goal_height = 880
@@ -43,12 +43,23 @@ class MiniMap:
         
         self.game_tick_packet = None
         self.sdk = sdk
+        self.player_index = player_index
         
+        self.disabled = True
+     
 
     
-    def set_game_tick_packet(self, game_tick_packet):
+    def set_game_tick_packet(self, game_tick_packet, player_index=0):
         self.game_tick_packet = game_tick_packet
-
+        self.player_index = player_index
+        self.enable()
+        
+        
+    def disable(self):
+        self.disabled = True
+        
+    def enable(self):
+        self.disabled = False
 
     def update_scale_factor(self, new_width, new_height):
         # Calculate new size while maintaining the aspect ratio
@@ -94,6 +105,8 @@ class MiniMap:
 
         self.player_name_font = pygame.font.Font(None, int(20 * self.scale_factor))
         self.fps_font = pygame.font.Font(None, int(15 * self.scale_factor))
+        self.big_message = pygame.font.Font(None, int(50 * self.scale_factor))
+        self.info_font = pygame.font.Font(None, int(15 * self.scale_factor))
 
         self.running = True
         while self.running:
@@ -117,12 +130,34 @@ class MiniMap:
                 object_surface.fill((0, 0, 0, 0)) 
                 
                 
-                if self.game_tick_packet:
-                    try:
-                        self.draw_game_elements(object_surface, self.game_tick_packet)
-                        screen.blit(object_surface, (0, 0))
-                    except Exception as e:
-                        print(e)
+                if self.disabled:
+                    text = self.big_message.render("Bot disabled", True, (255, 0, 0))
+                    text_rect = text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+                    screen.blit(text, text_rect)
+                else:
+
+                    if self.game_tick_packet:
+                        try:
+                            self.draw_game_elements(object_surface, self.game_tick_packet)
+                            screen.blit(object_surface, (0, 0))
+                            
+                            
+                            if self.game_tick_packet.game_info.is_kickoff_pause:
+                                text = self.big_message.render("KICKOFF !", True, (0, 255, 255))
+                                text_rect = text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+                                screen.blit(text, text_rect)
+                                
+                            if self.game_tick_packet.game_info.is_match_ended:
+                                text = self.big_message.render("Match ended", True, (0, 255, 255))
+                                text_rect = text.get_rect(center=(self.screen_width // 2, self.screen_height // 2))
+                                screen.blit(text, text_rect)
+                                
+                                
+                            self.draw_info(screen)
+                            
+                            
+                        except Exception as e:
+                            print(e)
 
 
 
@@ -143,6 +178,64 @@ class MiniMap:
        
         pygame.quit()
         sys.exit()
+        
+        
+    def draw_info(self, screen):
+        gtp : GameTickPacket = self.game_tick_packet
+        
+        # draw info on top left of the screen
+        
+        # frame num        
+        
+        frame_num = gtp.game_info.frame_num
+        
+        text = self.info_font.render(f"Frame: {frame_num}", True, (255, 255, 255))
+        screen.blit(text, (10, 10))
+        
+        # time elapsed (rounded to 2 decimals)
+        
+        time_elapsed = round(gtp.game_info.seconds_elapsed, 2)
+        text = self.info_font.render(f"Time elapsed: {time_elapsed}", True, (255, 255, 255))
+        screen.blit(text, (10, 30))
+
+        # round active
+        
+        round_active = gtp.game_info.is_round_active
+        text = self.info_font.render(f"Round active: {round_active}", True, (255, 255, 255))
+        screen.blit(text, (10, 50))
+        
+        # is kickoff pause
+        
+        is_kickoff_pause = gtp.game_info.is_kickoff_pause
+        text = self.info_font.render(f"Kickoff pause: {is_kickoff_pause}", True, (255, 255, 255))
+        screen.blit(text, (10, 70))
+        
+        # is match ended
+        
+        is_match_ended = gtp.game_info.is_match_ended
+        text = self.info_font.render(f"Match ended: {is_match_ended}", True, (255, 255, 255))
+        screen.blit(text, (10, 90))
+        
+        # is overtime
+        
+        is_overtime = gtp.game_info.is_overtime
+        text = self.info_font.render(f"Overtime: {is_overtime}", True, (255, 255, 255))
+        screen.blit(text, (10, 110))
+        
+        # Player index
+        
+        player_index = self.player_index
+        text = self.info_font.render(f"Player index: {player_index}", True, (255, 255, 255))
+        screen.blit(text, (10, 130))
+        
+        
+        
+       
+        
+        
+   
+        
+
 
     def draw_field(self, screen):
 
@@ -286,6 +379,13 @@ class MiniMap:
 
             pygame.draw.rect(screen, (255, 0, 0), (boost_bar_x, boost_bar_y, boost_bar_width, boost_bar_height))
             pygame.draw.rect(screen, (0, 255, 0), (boost_bar_x, boost_bar_y, int(boost_bar_width * boost_amount), boost_bar_height))
+            
+            # add an additional yellow circle to indicate the player
+            if self.player_index == car_index:
+                pygame.draw.circle(screen, (255, 255, 0), (x, y), int(radius * 1.5), 2)
+                
+                
+               
             
         
         boostpads = self.sdk.field.boostpads
