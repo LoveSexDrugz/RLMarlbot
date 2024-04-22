@@ -1,0 +1,78 @@
+# Fichiers spécifiques à l'utilisateur Visual Studio
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Fichiers de cache de build Visual Studio
+[Dd]ebug/
+[Dd]ebugPublic/
+[Rr]elease/
+[Rr]eleases/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Fichiers de rapport Visual Studio
+Report.???
+*.errorlog
+*.netlify
+*.coverage
+*.coveragexml
+*.log
+*.vspx
+
+# Autres fichiers et dossiers à ignorer
+*.dbmdl
+*.dbproj.schemaview
+*.jfm
+*.pfx
+*.publishsettings
+*.backup*
+*.tmp
+*.temp
+*.[Cc]ache
+*.bak
+*.swp
+*~.nib
+local.properties
+
+# Fichiers générés par Visual Studio
+ipch/
+*.aps
+*.ncb
+*.opendb
+*.opensdf
+*.sdf
+*.cachefile
+*.VC.db
+*.VC.VC.opendb
+
+# Fichiers de configuration de projet spécifiques à l'utilisateur
+*.vcxproj.user
+*.vcxproj.filters
+
+# Dossiers générés par les outils
+.vs/
+packages/
+*.xcodeproj/
+*.idea/
+*.config
+*.pyc
+
+# Ignore le fichier de paramètres spécifiques à la machine
+*.DotSettings.user
+
+# Ignorer les fichiers de node
+node_modules/
+
+# Ignorer les fichiers de cache de paquet
+*.ipch
+/nuget.exe
+.nuget/
