@@ -126,12 +126,13 @@ class NextoBot:
 
     def stop_writing(self):
         self.write_running = False
-       
-        # Reset the input state to avoid handbrake bug
-        default_input_state = SimpleControllerState()
-        bytearray_input = self.controller_to_input(default_input_state)
-        self.mw.set_memory_data(self.input_address, bytearray_input)
-        time.sleep(0.1)
+
+        if self.input_address:
+            # Reset the input state to avoid handbrake bug
+            default_input_state = SimpleControllerState()
+            bytearray_input = self.controller_to_input(default_input_state)
+            self.mw.set_memory_data(self.input_address, bytearray_input)
+            time.sleep(0.1)
         
         self.mw.stop()
         
@@ -173,6 +174,7 @@ class NextoBot:
                     game_tick_packet = self.generate_game_tick_packet(game_event)
                 except Exception as e:
                     print(Fore.RED + "Failed to generate game tick packet: ", e, Style.RESET_ALL)
+                    self.disable_bot()
                     return
                 simple_controller_state = self.bot.get_output(game_tick_packet)
                 bytearray_input = self.controller_to_input(simple_controller_state)
@@ -275,6 +277,10 @@ class NextoBot:
 
 
         pris = game_event.get_pris()
+        
+        # filter only non spectator pris
+        
+        pris = [pri for pri in pris if not pri.is_spectator()]
 
         game_tick_packet.num_cars = len(pris)
 
@@ -285,10 +291,15 @@ class NextoBot:
         for i, pri in enumerate(pris):
             player_info = PlayerInfo()
             
+            try:
+                car: Car = pri.get_car()
+            except:
+                car = None
             
-            car: Car = pri.get_car()
+            
+            
             team_info = pri.get_team_info()
-            
+
             if car:
 
                 player_info.physics.location.x = car.get_location().get_x()
@@ -397,10 +408,11 @@ class NextoBot:
             player_pri = player_controller.get_pri()
             player_name = player_pri.get_player_name()
             
+            if player_pri.is_spectator():
+                raise Exception("Player is spectator")
+            
             
             pris = game_event.get_pris()
-
-            cars = game_event.get_cars()
 
             for i, pri in enumerate(pris):
                 if pri.address == player_pri.address:
@@ -409,8 +421,11 @@ class NextoBot:
                     break
             else:
                 raise Exception("Player car not found")
-
-            team_index = player_pri.get_team_info().get_index()
+            
+            try:
+                team_index = player_pri.get_team_info().get_index()
+            except:
+                raise Exception("Failed to get team index")
             
             if self.bot_to_use == "nexto":
                 self.bot = Nexto(player_name, team_index, pri_index)
