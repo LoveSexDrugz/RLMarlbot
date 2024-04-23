@@ -126,7 +126,16 @@ class NextoBot:
 
     def stop_writing(self):
         self.write_running = False
+       
+        # Reset the input state to avoid handbrake bug
+        default_input_state = SimpleControllerState()
+        bytearray_input = self.controller_to_input(default_input_state)
+        self.mw.set_memory_data(self.input_address, bytearray_input)
+        time.sleep(0.1)
+        
         self.mw.stop()
+        
+        
         print(Fore.LIGHTRED_EX + "Writing stopped" + Style.RESET_ALL)
 
     def get_virtual_seconds_elapsed(self):
