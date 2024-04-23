@@ -1075,13 +1075,13 @@ rlbot = "==1.*"
 
 [[package]]
 name = "rlsdk-python"
-version = "0.1.1"
+version = "0.2.2"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "rlsdk_python-0.1.1-py3-none-any.whl", hash = "sha256:dab9294ad3c4ac0c472c9e03904d5ffd0bec424ae11440101e7bebfbdeabace8"},
-    {file = "rlsdk_python-0.1.1.tar.gz", hash = "sha256:85e30cb6c5ed41b0869e327161c61875fa6ff594ede52b3b05aea8576c2cf4e4"},
+    {file = "rlsdk_python-0.2.2-py3-none-any.whl", hash = "sha256:3269b8b876d659c97c91fda3c59cd60e0cedc344effae693f97766017dd53b2d"},
+    {file = "rlsdk_python-0.2.2.tar.gz", hash = "sha256:032295254e69f9ccfe29379e229e46a3dcb6817bd9662774f86ce53fef2901a9"},
 ]
 
 [package.dependencies]
@@ -1535,4 +1535,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "fcd1a05703343a564aeb635a18bec415bc585a9b7306943e02f913e0a7d334fb"
+content-hash = "9d7f6529b22f7ada5d8012f378e0c8d7af83d03d46a44bf81df57a6141cf3407"
