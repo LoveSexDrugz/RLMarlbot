@@ -2,6 +2,7 @@ from rlsdk_python import RLSDK, EventTypes, GameEvent, PRI, Ball, Car
 from rlsdk_python.events import EventPlayerTick
 from nexto.bot import Nexto
 from seer.bot import Seer
+from necto.bot import Necto
 from rlbot.utils.structures.game_data_struct import BallInfo, Vector3, Rotator, FieldInfoPacket, BoostPad, GoalInfo, GameTickPacket, Physics, GameInfo, TileInfo, TeamInfo, PlayerInfo, BoostPadState
 import sys
 import time
@@ -46,13 +47,16 @@ class NextoBot:
         
         print(Fore.GREEN + "Select the bot to use:" + Style.RESET_ALL)
         print("1. Nexto")
-        print("2. Seer (BETA)")
+        print("2. Necto")
+        print("3. Seer v4 (bad)")
         
-        answer = prompt("Your choice (1/2): ")
+        answer = prompt("Your choice (1/2/3): ")
         
         if answer == "1":
             self.bot_to_use = "nexto"
         elif answer == "2":
+            self.bot_to_use = "necto"
+        elif answer == "3":
             self.bot_to_use = "seer"
         else:
             print(Fore.RED + "Invalid bot selected" + Style.RESET_ALL)
@@ -208,8 +212,8 @@ class NextoBot:
         flags |= (controller.handbrake << 0)
         flags |= (controller.jump << 1)
         flags |= (controller.boost << 2)
-        flags |= (controller.boost << 3)  # Assuming 'holding_boost' is another boolean attribute
-        flags |= (controller.use_item << 4)       # Assuming 'use_item' needs to be packed as well
+        flags |= (controller.boost << 3) 
+        flags |= (controller.use_item << 4)  
 
         # Encode the flags into the last 4 bytes (uint32)
         inputs[28:32] = struct.pack('<I', flags)
@@ -224,12 +228,9 @@ class NextoBot:
         balls = game_event.get_balls()
         ball = None
      
-
-
         if len(balls) > 0:
             ball = balls[0]
             ball_info = BallInfo()
-
 
             ball_info.physics.location.x = ball.get_location().get_x()
             ball_info.physics.location.y = ball.get_location().get_y()
@@ -320,9 +321,6 @@ class NextoBot:
             
             player_info_array[i] = player_info
             
-            
-            
-
         game_tick_packet.game_cars = player_info_array
 
         teams = game_event.get_teams()
@@ -409,7 +407,10 @@ class NextoBot:
                 self.bot = Nexto(player_name, team_index, pri_index)
                 self.bot.initialize_agent(self.field_info)
                 print(Fore.LIGHTGREEN_EX + "Nexto enabled" + Style.RESET_ALL)
-            
+            elif self.bot_to_use == "necto":
+                self.bot = Necto(player_name, team_index, pri_index)
+                self.bot.initialize_agent(self.field_info)
+                print(Fore.LIGHTGREEN_EX + "Necto enabled" + Style.RESET_ALL)
             elif self.bot_to_use == "seer":
                 self.bot = Seer(player_name, team_index, pri_index)
                 self.bot.initialize_agent()
