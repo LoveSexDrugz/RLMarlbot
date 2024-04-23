@@ -26,7 +26,7 @@ KICKOFF_NUMPY = np.array([
 
 class Nexto(BaseAgent):
     def __init__(self, name, team, index,
-                 beta=1, render=False, hardcoded_kickoffs=True, stochastic_kickoffs=True):
+                 beta=1, render=False, hardcoded_kickoffs=True, stochastic_kickoffs=False):
         super().__init__(name, team, index)
 
         self.obs_builder = None
