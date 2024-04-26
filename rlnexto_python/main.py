@@ -301,14 +301,20 @@ class NextoBot:
         for i, pri in enumerate(pris):
             player_info = PlayerInfo()
             
+      
+            # If player has no team, he is probably a spectator, so we skip him
+            try:
+                team_info = pri.get_team_info()
+                player_info.team = team_info.get_index()
+            except:
+                continue
+            
+            
             try:
                 car: Car = pri.get_car()
             except:
                 car = None
             
-            
-            
-            team_info = pri.get_team_info()
 
             if car:
 
@@ -332,6 +338,7 @@ class NextoBot:
                 player_info.is_super_sonic = car.is_supersonic()
                 
                 player_info.double_jumped = car.is_double_jumped()
+                player_info.jumped = car.is_jumped()
                 
                 boost_component = car.get_boost_component()
                 try:
@@ -339,11 +346,11 @@ class NextoBot:
                 except:
                     player_info.boost = 0
             else:
-                player_info.is_demolished = False
+                # at this point, the car is not found, but the player has a team, so this is probably a demolished car
+                player_info.is_demolished = True
                     
-            player_info.team = team_info.get_index()
-   
-            # player_info.jumped = car.is_jumped()
+            
+     #
             
             
 
