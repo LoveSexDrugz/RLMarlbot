@@ -1075,18 +1075,20 @@ rlbot = "==1.*"
 
 [[package]]
 name = "rlsdk-python"
-version = "0.2.2"
+version = "0.3.0"
 description = ""
 optional = false
 python-versions = "<4.0,>=3.11"
 files = [
-    {file = "rlsdk_python-0.2.2-py3-none-any.whl", hash = "sha256:3269b8b876d659c97c91fda3c59cd60e0cedc344effae693f97766017dd53b2d"},
-    {file = "rlsdk_python-0.2.2.tar.gz", hash = "sha256:032295254e69f9ccfe29379e229e46a3dcb6817bd9662774f86ce53fef2901a9"},
+    {file = "rlsdk_python-0.3.0-py3-none-any.whl", hash = "sha256:73f8ec38ca3508d583ebc4f2b6521e336d541906e9b55434f7b163a3bcd48b79"},
+    {file = "rlsdk_python-0.3.0.tar.gz", hash = "sha256:891a6b6d0cd385ca68fe031a373888802a3960b8fc9cc0f3855d98de326fda62"},
 ]
 
 [package.dependencies]
+colorama = ">=0.4.6,<0.5.0"
 frida = ">=16.2.1,<17.0.0"
 Pymem = ">=1.13.1,<2.0.0"
+tqdm = ">=4.66.2,<5.0.0"
 
 [[package]]
 name = "scikit-learn"
@@ -1312,6 +1314,26 @@ opt-einsum = ["opt-einsum (>=3.3)"]
 optree = ["optree (>=0.9.1)"]
 
 [[package]]
+name = "tqdm"
+version = "4.66.2"
+description = "Fast, Extensible Progress Meter"
+optional = false
+python-versions = ">=3.7"
+files = [
+    {file = "tqdm-4.66.2-py3-none-any.whl", hash = "sha256:1ee4f8a893eb9bef51c6e35730cebf234d5d0b6bd112b0271e10ed7c24a02bd9"},
+    {file = "tqdm-4.66.2.tar.gz", hash = "sha256:6cd52cdf0fef0e0f543299cfc96fec90d7b8a7e88745f411ec33eb44d5ed3531"},
+]
+
+[package.dependencies]
+colorama = {version = "*", markers = "platform_system == \"Windows\""}
+
+[package.extras]
+dev = ["pytest (>=6)", "pytest-cov", "pytest-timeout", "pytest-xdist"]
+notebook = ["ipywidgets (>=6)"]
+slack = ["slack-sdk"]
+telegram = ["requests"]
+
+[[package]]
 name = "trio"
 version = "0.25.0"
 description = "A friendly Python library for async concurrency and I/O"
@@ -1535,4 +1557,4 @@ h11 = ">=0.9.0,<1"
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.11,<3.13"
-content-hash = "9d7f6529b22f7ada5d8012f378e0c8d7af83d03d46a44bf81df57a6141cf3407"
+content-hash = "caf4b557b662328aa57f89b56ed77d248353fc2ade41b9d316819f7f786f59bc"

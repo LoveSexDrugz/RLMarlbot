@@ -3,6 +3,7 @@ from rlsdk_python.events import EventPlayerTick
 from nexto.bot import Nexto
 from seer.bot import Seer
 from necto.bot import Necto
+from element.bot import Element
 from rlbot.utils.structures.game_data_struct import BallInfo, Vector3, Rotator, FieldInfoPacket, BoostPad, GoalInfo, GameTickPacket, Physics, GameInfo, TileInfo, TeamInfo, PlayerInfo, BoostPadState
 import sys
 import time
@@ -48,9 +49,10 @@ class NextoBot:
         print(Fore.GREEN + "Select the bot to use:" + Style.RESET_ALL)
         print("1. Nexto")
         print("2. Necto")
-        print("3. Seer v4 (bad)")
+        print("3. Seer (old version)")
+        print("4. Element")
         
-        answer = prompt("Your choice (1/2/3): ")
+        answer = prompt("Your choice (1/2/3/4): ")
         
         if answer == "1":
             self.bot_to_use = "nexto"
@@ -58,6 +60,8 @@ class NextoBot:
             self.bot_to_use = "necto"
         elif answer == "3":
             self.bot_to_use = "seer"
+        elif answer == "4":
+            self.bot_to_use = "element"
         else:
             print(Fore.RED + "Invalid bot selected" + Style.RESET_ALL)
             exit()
@@ -176,7 +180,13 @@ class NextoBot:
                     print(Fore.RED + "Failed to generate game tick packet: ", e, Style.RESET_ALL)
                     self.disable_bot()
                     return
-                simple_controller_state = self.bot.get_output(game_tick_packet)
+                
+                try:
+                    simple_controller_state = self.bot.get_output(game_tick_packet)
+                except Exception as e:
+                    print(Fore.RED + "Failed to get bot output: ", e, Style.RESET_ALL)
+                    self.disable_bot()
+                    return
                 bytearray_input = self.controller_to_input(simple_controller_state)
 
                 local_players = game_event.get_local_players()
@@ -439,7 +449,10 @@ class NextoBot:
                 self.bot = Seer(player_name, team_index, pri_index)
                 self.bot.initialize_agent()
                 print(Fore.LIGHTGREEN_EX + "Seer enabled" + Style.RESET_ALL)
-
+            if self.bot_to_use == "element":
+                self.bot = Element(player_name, team_index, pri_index)
+                self.bot.initialize_agent(self.field_info)
+                print(Fore.LIGHTGREEN_EX + "Element enabled" + Style.RESET_ALL)
 
     def disable_bot(self):
         self.bot = None
