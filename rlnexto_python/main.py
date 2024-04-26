@@ -21,7 +21,7 @@ import signal
 class NextoBot:
     def __init__(self):
         just_fix_windows_console()
-        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.3.1" + Style.RESET_ALL)
+        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.4.0" + Style.RESET_ALL)
 
         self.config = {
             "bot_toggle_key": "F1"
