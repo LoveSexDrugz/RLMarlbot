@@ -25,7 +25,7 @@ poetry install
 poetry shell
 
 # Run the game before running the script 
-python .\rlnexto_python\main.py
+python .\rlmarlbot\main.py
 ```
 
 ## Build binary from source
