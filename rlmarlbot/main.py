@@ -17,6 +17,8 @@ import json
 from rlmarlbot.map import MiniMap
 from  threading import Thread
 import signal
+from helpers import serialize_to_json, clear_line, move_cursor_up, clear_lines, clear_screen
+import os
 
 class NextoBot:
     def __init__(self):
@@ -24,13 +26,16 @@ class NextoBot:
         print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.4.0" + Style.RESET_ALL)
 
         self.config = {
-            "bot_toggle_key": "F1"
+            "bot_toggle_key": "F1",
+            "dump_game_tick_packet_key": "F2"
         }
 
         try:
             with open("config.json", "r") as f:
                 config = json.load(f)
                 self.config["bot_toggle_key"] = config.get("bot_toggle_key", "F1")
+                self.config["dump_game_tick_packet_key"] = config.get("dump_game_tick_packet_key", "F2")
+                
 
         except Exception as e:
             
@@ -99,18 +104,23 @@ class NextoBot:
         print(Fore.LIGHTGREEN_EX + "SDK started" + Style.RESET_ALL)
 
         self.frame_num = 0
-
         self.bot = None
         self.field_info = None
-
         self.last_input = None
         self.input_address = None
+        self.last_tick_start_time = None
+        self.tick_counter = 0
+        self.tick_rate = 0
+        self.last_tick_duration = 0
+        
        
         self.sdk.event.subscribe(EventTypes.ON_PLAYER_TICK, self.on_tick)
         self.sdk.event.subscribe(EventTypes.ON_KEY_PRESSED, self.on_key_pressed)
         self.sdk.event.subscribe(EventTypes.ON_GAME_EVENT_DESTROYED, self.on_game_event_destroyed)
 
         self.virtual_seconds_elapsed = time.time()
+        
+        self.last_game_tick_packet = None
 
         print(Fore.LIGHTYELLOW_EX + "Press " + self.config["bot_toggle_key"]  + " during a match to toggle Nexto" + Style.RESET_ALL)
 
@@ -155,11 +165,35 @@ class NextoBot:
 
 
     def on_tick(self, event: EventPlayerTick):
+        
+        
+        
+        
 
         if not self.field_info and self.sdk.current_game_event:
             self.generate_field_info()
 
         if self.bot:
+            
+            if not self.last_tick_start_time:
+                self.last_tick_start_time = time.perf_counter()
+                
+            tick_time = time.perf_counter() - self.last_tick_start_time
+            
+            tick_duration = time.perf_counter()
+            
+            # if tick time > 1 second
+            
+            if tick_time > 1:
+                self.last_tick_start_time = time.perf_counter()
+                self.tick_rate = self.tick_counter
+                self.tick_counter = 0
+                
+            else:
+                self.tick_counter += 1
+                
+            
+        
             
             self.frame_num += 1
             game_event = self.sdk.current_game_event
@@ -169,6 +203,7 @@ class NextoBot:
             
                 try:
                     game_tick_packet = self.generate_game_tick_packet(game_event)
+                    self.last_game_tick_packet = game_tick_packet
                 except Exception as e:
                     print(Fore.RED + "Failed to generate game tick packet: ", e, Style.RESET_ALL)
                     self.disable_bot()
@@ -180,6 +215,7 @@ class NextoBot:
                     print(Fore.RED + "Failed to get bot output: ", e, Style.RESET_ALL)
                     self.disable_bot()
                     return
+                
                 bytearray_input = self.controller_to_input(simple_controller_state)
 
                 local_players = game_event.get_local_players()
@@ -203,6 +239,15 @@ class NextoBot:
                 
                 if self.bot:
                     self.minimap.set_game_tick_packet(game_tick_packet, self.bot.index)
+                    
+                
+                self.last_tick_duration = time.perf_counter() - tick_duration    
+                
+              
+                
+      
+                    
+                self.display_monitoring_info(game_tick_packet, simple_controller_state)
           
  
     def controller_to_input(self, controller: SimpleControllerState):
@@ -449,15 +494,23 @@ class NextoBot:
                 self.bot = Element(player_name, team_index, pri_index)
                 self.bot.initialize_agent(self.field_info)
                 print(Fore.LIGHTGREEN_EX + "Element enabled" + Style.RESET_ALL)
+                
+            clear_screen()
 
     def disable_bot(self):
         self.bot = None
         self.stop_writing()
         self.last_input = None
         self.input_address = None
+        self.last_game_tick_packet = None
         self.frame_num = 0
-        print(Fore.LIGHTRED_EX + "Bot disabled" + Style.RESET_ALL)
         self.minimap.disable()
+        self.last_tick_start_time = None
+        self.tick_rate = 0
+        self.tick_counter = 0
+        self.last_tick_duration = 0
+        print(Fore.LIGHTRED_EX + "Bot disabled" + Style.RESET_ALL)
+        
 
     def on_key_pressed(self, event):
 
@@ -474,6 +527,11 @@ class NextoBot:
                     except Exception as e:
                         print(Fore.RED + "Failed to enable bot: ", e, Style.RESET_ALL)
                         self.disable_bot()
+                        
+        if event.key == self.config["dump_game_tick_packet_key"]:
+            if event.type == "pressed":
+                if self.last_game_tick_packet:
+                    self.dump_packet(self.last_game_tick_packet)
   
 
     def get_field_info(self):
@@ -536,6 +594,30 @@ class NextoBot:
         self.minimap.running = False
         self.minimap_thread.join()
         sys.exit(0)
+        
+        
+        
+    def dump_packet(self, game_tick_packet):
+        json_packet = serialize_to_json(game_tick_packet)
+        frame_num = game_tick_packet.game_info.frame_num
+        with open("game_tick_packet_" + str(frame_num) + ".json", "w") as f:
+            f.write(json_packet)
+        print(Fore.LIGHTGREEN_EX + "Game tick packet dumped to game_tick_packet_" + str(frame_num) + ".json" + Style.RESET_ALL)
+        
+        
+    def display_monitoring_info(self, game_tick_packet, controller):
+        
+    
+        clear_lines(5)
+      
+        
+        print(Fore.LIGHTYELLOW_EX + "Bot Monitoring Info" + Style.RESET_ALL)
+        print(Fore.LIGHTCYAN_EX + "Tick rate: " + Fore.LIGHTGREEN_EX + str(self.tick_rate) + " ticks/s" + Style.RESET_ALL)
+        # Tick computation time
+        print(Fore.LIGHTCYAN_EX + "Tick processing time: " + Fore.LIGHTGREEN_EX + str(round(self.last_tick_duration * 1000, 2)) + " ms" + Style.RESET_ALL)
+        # Frane number
+        print(Fore.LIGHTCYAN_EX + "Frame number: " + Fore.LIGHTGREEN_EX + str(game_tick_packet.game_info.frame_num) + Style.RESET_ALL)
+        
 
 
 if __name__ == '__main__':

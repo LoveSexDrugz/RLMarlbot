@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "rlnexto-python"
+name = "rlmarlbot"
 version = "1.0.0"
 description = ""
 authors = ["MarlburroW <nik0o@hotmail.com>"]
