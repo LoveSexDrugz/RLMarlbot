@@ -2,10 +2,19 @@
 
 
 a = Analysis(
-    ['rlnexto_python\\main.py'],
+    ['rlmarlbot\\main.py'],
     pathex=[],
-    binaries=[('rlnexto_python/memory_writer/memory_writer.pyd', 'memory_writer')],
-    datas=[('rlnexto_python/nexto', 'nexto'), ('rlnexto_python/nexto/nexto-model.pt', 'rlnexto_python/nexto'), ('rlnexto_python/necto', 'necto'), ('rlnexto_python/necto/necto-model.pt', 'rlnexto_python/necto'),  ('rlnexto_python/seer', 'seer'),  ('rlnexto_python/seer/Seer.pt', 'rlnexto_python/seer')],
+    binaries=[('rlmarlbot/memory_writer/memory_writer.pyd', 'memory_writer')],
+    datas=[
+        ('rlmarlbot/nexto', 'nexto'), 
+        ('rlmarlbot/nexto/nexto-model.pt', 'rlmarlbot/nexto'), 
+        ('rlmarlbot/necto', 'necto'),
+        ('rlmarlbot/necto/necto-model.pt', 'rlmarlbot/necto'),  
+        ('rlmarlbot/seer', 'seer'),  
+        ('rlmarlbot/seer/Seer.pt', 'rlmarlbot/seer'),
+        ('rlmarlbot/element', 'element'),  
+        ('rlmarlbot/element/model.p', 'rlmarlbot/element'),
+    ],
     hiddenimports=['torch', 'rlgym_compat', 'sklearn'],
     hookspath=[],
     hooksconfig={},

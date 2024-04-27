@@ -71,7 +71,7 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <OutDir>C:\Users\nik0o\source\repos\RLNEXTO-Python\rlnexto_python\memory_writer</OutDir>
+    <OutDir>C:\Users\nik0o\source\repos\RLNEXTO-Python\rlmarlbot\memory_writer</OutDir>
     <TargetName>memory_writer.pyd</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">

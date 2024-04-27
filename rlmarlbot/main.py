@@ -14,7 +14,7 @@ from threading import  Event
 from memory_writer import memory_writer
 from colorama import Fore, Back, Style, just_fix_windows_console
 import json
-from rlnexto_python.map import MiniMap
+from rlmarlbot.map import MiniMap
 from  threading import Thread
 import signal
 
@@ -65,10 +65,7 @@ class NextoBot:
         else:
             print(Fore.RED + "Invalid bot selected" + Style.RESET_ALL)
             exit()
-        
-        
-        
-        
+
         self.start()
         
 
@@ -101,10 +98,6 @@ class NextoBot:
         
         print(Fore.LIGHTGREEN_EX + "SDK started" + Style.RESET_ALL)
 
-        # functions = self.sdk.scan_functions(10)
-        # for function in functions:
-        #     print(function.get_full_name())
-        
         self.frame_num = 0
 
         self.bot = None
@@ -348,11 +341,7 @@ class NextoBot:
             else:
                 # at this point, the car is not found, but the player has a team, so this is probably a demolished car
                 player_info.is_demolished = True
-                    
-            
-     #
-            
-            
+
 
             player_info.name = pri.get_player_name()
             
