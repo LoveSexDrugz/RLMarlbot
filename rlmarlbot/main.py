@@ -1,5 +1,5 @@
-from rlsdk_python import RLSDK, EventTypes, GameEvent, PRI, Ball, Car
-from rlsdk_python.events import EventPlayerTick
+from rlsdk_python import RLSDK, EventTypes, GameEvent, PRI, Ball, Car, PROCESS_NAME
+from rlsdk_python.events import EventPlayerTick, EventRoundActiveStateChanged
 from nexto.bot import Nexto
 from seer.bot import Seer
 from necto.bot import Necto
@@ -18,12 +18,16 @@ from rlmarlbot.map import MiniMap
 from  threading import Thread
 import signal
 from helpers import serialize_to_json, clear_line, move_cursor_up, clear_lines, clear_screen
-import os
+import argparse
+
 
 class NextoBot:
-    def __init__(self):
+    def __init__(self, pid=None, bot=None, autotoggle=False):
         just_fix_windows_console()
-        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.4.0" + Style.RESET_ALL)
+        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.5.0" + Style.RESET_ALL)
+        
+        self.pid = pid
+        self.autotoggle = autotoggle
 
         self.config = {
             "bot_toggle_key": "F1",
@@ -49,27 +53,29 @@ class NextoBot:
         print(Fore.CYAN + "For keys binding, you can find values here: https://nerivec.github.io/old-ue4-wiki/pages/list-of-keygamepad-input-names.html" + Style.RESET_ALL)
         print(Fore.LIGHTYELLOW_EX + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort" + Style.RESET_ALL)
 
-        self.bot_to_use = None
+        self.bot_to_use = bot or None
         
-        print(Fore.GREEN + "Select the bot to use:" + Style.RESET_ALL)
-        print("1. Nexto")
-        print("2. Necto")
-        print("3. Seer (old version)")
-        print("4. Element")
+        if not self.bot_to_use:
         
-        answer = prompt("Your choice (1/2/3/4): ")
-        
-        if answer == "1":
-            self.bot_to_use = "nexto"
-        elif answer == "2":
-            self.bot_to_use = "necto"
-        elif answer == "3":
-            self.bot_to_use = "seer"
-        elif answer == "4":
-            self.bot_to_use = "element"
-        else:
-            print(Fore.RED + "Invalid bot selected" + Style.RESET_ALL)
-            exit()
+            print(Fore.GREEN + "Select the bot to use:" + Style.RESET_ALL)
+            print("1. Nexto")
+            print("2. Necto")
+            print("3. Seer (old version)")
+            print("4. Element")
+            
+            answer = prompt("Your choice (1/2/3/4): ")
+            
+            if answer == "1":
+                self.bot_to_use = "nexto"
+            elif answer == "2":
+                self.bot_to_use = "necto"
+            elif answer == "3":
+                self.bot_to_use = "seer"
+            elif answer == "4":
+                self.bot_to_use = "element"
+            else:
+                print(Fore.RED + "Invalid bot selected" + Style.RESET_ALL)
+                exit()
 
         self.start()
         
@@ -77,7 +83,7 @@ class NextoBot:
     def start(self):
         print(Fore.LIGHTBLUE_EX + "Starting SDK..." + Style.RESET_ALL)
         try:
-            self.sdk = RLSDK(hook_player_tick=True)
+            self.sdk = RLSDK(hook_player_tick=True, pid=self.pid)
         except Exception as e:
             print(Fore.RED + "Failed to start SDK: ", e, Style.RESET_ALL)
             exit()
@@ -96,7 +102,13 @@ class NextoBot:
         print(Fore.LIGHTBLUE_EX + "Starting memory writer..." + Style.RESET_ALL)
 
         self.mw = memory_writer.MemoryWriter()
-        self.mw.open_process("RocketLeague.exe")
+        
+        if self.pid:
+            self.mw.open_process_by_id(self.pid)
+        else:
+            self.mw.open_process(PROCESS_NAME)
+            
+            
         self.write_running = False
 
         print(Fore.LIGHTGREEN_EX + "Memory writer started" + Style.RESET_ALL)
@@ -117,6 +129,7 @@ class NextoBot:
         self.sdk.event.subscribe(EventTypes.ON_PLAYER_TICK, self.on_tick)
         self.sdk.event.subscribe(EventTypes.ON_KEY_PRESSED, self.on_key_pressed)
         self.sdk.event.subscribe(EventTypes.ON_GAME_EVENT_DESTROYED, self.on_game_event_destroyed)
+        self.sdk.event.subscribe(EventTypes.ON_ROUND_ACTIVE_STATE_CHANGED, self.on_round_active_state_changed)
 
         self.virtual_seconds_elapsed = time.time()
         
@@ -125,6 +138,11 @@ class NextoBot:
         print(Fore.LIGHTYELLOW_EX + "Press " + self.config["bot_toggle_key"]  + " during a match to toggle Nexto" + Style.RESET_ALL)
 
 
+    
+    def on_round_active_state_changed(self, event: EventRoundActiveStateChanged):
+        pass
+    
+    
     def on_game_event_destroyed(self, event: GameEvent):
         print(Fore.LIGHTRED_EX + "Game event destroyed" + Style.RESET_ALL)
         self.reset_virtual_seconds_elapsed()
@@ -172,6 +190,24 @@ class NextoBot:
 
         if not self.field_info and self.sdk.current_game_event:
             self.generate_field_info()
+            
+            
+        if not self.bot and self.autotoggle:
+            
+            game_event = self.sdk.get_game_event()
+            if game_event:
+                try:
+                    round_active = game_event.is_round_active()
+                except:
+                    pass
+                
+                if round_active:
+                    try:
+                        self.enable_bot()
+                    except Exception as e:
+                        print(Fore.RED + "Failed to enable bot: ", e, Style.RESET_ALL)
+                        self.disable_bot()
+                    return
 
         if self.bot:
             
@@ -619,9 +655,15 @@ class NextoBot:
         print(Fore.LIGHTCYAN_EX + "Frame number: " + Fore.LIGHTGREEN_EX + str(game_tick_packet.game_info.frame_num) + Style.RESET_ALL)
         
 
-
 if __name__ == '__main__':
-    bot = NextoBot()
+    parser = argparse.ArgumentParser(description='RLMarlbot')
+    parser.add_argument('-p', '--pid', type=int, help='Rocket League process ID')
+    parser.add_argument('-b', '--bot', type=str, help='Bot to use (nexto, necto, seer, element)')
+    parser.add_argument('-a', '--autotoggle', action='store_true', help='Automatically toggle the bot on active round')
+    args = parser.parse_args()
+
+    bot = NextoBot(pid=args.pid, bot=args.bot, autotoggle=args.autotoggle)
+    
     signal.signal(signal.SIGINT, bot.exit)
     
     try:

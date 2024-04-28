@@ -38,7 +38,6 @@ public:
                     CloseHandle(snapshot);
 
                     py::print("Process opened: ", processName);
-
                     return hProcess != nullptr;
                 }
             } while (Process32Next(snapshot, &entry));
@@ -49,14 +48,23 @@ public:
         return false;
     }
 
+    bool open_process_by_id(DWORD processID) {
+        py::print("Opening process by ID: ", processID);
+        hProcess = OpenProcess(PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, processID);
+        if (hProcess != nullptr) {
+            py::print("Process opened by ID: ", processID);
+            return true;
+        }
+        else {
+            py::print("Failed to open process by ID: ", processID);
+            return false;
+        }
+    }
+
     void start() {
-      
         if (hProcess && !running) {
             running = true;
-            py::print("Attempting to start memory writer thread");
             worker = std::thread(&MemoryWriter::write_memory, this);
-            py::print("Thread launched");
-           
         }
     }
 
@@ -94,18 +102,13 @@ private:
             std::string local_data;
             uintptr_t local_address;
 
-            // Copie des données et de l'adresse de manière thread-safe
             {
                 std::lock_guard<std::mutex> lock(data_mutex);
                 local_data = data;
                 local_address = address;
             }
 
-            // Exécuter WriteProcessMemory sans interactions Python
             WriteProcessMemory(hProcess, (LPVOID)local_address, local_data.c_str(), local_data.size(), &bytesWritten);
-
-            // La suppression de la temporisation peut augmenter la fréquence d'écriture
-            // mais attention à ne pas surcharger le CPU ou le processus cible
         }
     }
 };
@@ -114,6 +117,7 @@ PYBIND11_MODULE(memory_writer, m) {
     py::class_<MemoryWriter>(m, "MemoryWriter")
         .def(py::init<>())
         .def("open_process", &MemoryWriter::open_process)
+        .def("open_process_by_id", &MemoryWriter::open_process_by_id)
         .def("start", &MemoryWriter::start)
         .def("stop", &MemoryWriter::stop)
         .def("set_memory_data", &MemoryWriter::set_memory_data);
