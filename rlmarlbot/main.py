@@ -653,7 +653,8 @@ class NextoBot:
     def display_monitoring_info(self, game_tick_packet, controller):
         
     
-        clear_lines(30)
+        # clear the console
+        print("\033[H\033[J")
       
         
         print(Fore.LIGHTYELLOW_EX + "Bot Monitoring Info" + Style.RESET_ALL)
