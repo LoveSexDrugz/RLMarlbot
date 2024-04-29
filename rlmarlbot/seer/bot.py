@@ -82,8 +82,10 @@ class Seer(BaseAgent):
             self.inverted = True
             self.opponent_index = 0
 
-        self.device = 'cpu'
-        
+        if torch.cuda.is_available():
+            self.device = 'cuda'
+        else:
+            self.device = 'cpu'
         
         cur_dir = os.path.dirname(os.path.realpath(__file__))
 
