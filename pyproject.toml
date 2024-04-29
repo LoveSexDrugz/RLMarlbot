@@ -19,7 +19,6 @@ numba = "^0.59.1"
 scikit-learn = "^1.4.2"
 rlsdk-python = "^0.4.0"
 art = "^6.2"
-toml = "^0.10.2"
 
 [build-system]
 requires = ["poetry-core"]
