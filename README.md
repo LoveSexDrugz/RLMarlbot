@@ -72,3 +72,4 @@ RLMarlbot is a bot that uses the RLSDK Python package to read data from RocketLe
 - **Thorami**: For giving me some very useful tips, especially on how to obtain the base addresses of GNames and GObjects.
 - **RLBot**: For having created a standard interface for bot creation.
 - **Bardak**: For testing
+- **AScriver**: Contribute to improve the RLSDK
