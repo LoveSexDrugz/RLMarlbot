@@ -19,16 +19,23 @@ from  threading import Thread
 import signal
 from helpers import serialize_to_json, clear_line, move_cursor_up, clear_lines, clear_screen
 import argparse
-
+from art import *
+import toml
 
 class NextoBot:
-    def __init__(self, pid=None, bot=None, autotoggle=False):
+    def __init__(self, pid=None, bot=None, autotoggle=False, minimap=True):
         just_fix_windows_console()
-        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot (Nexto) v1.5.0" + Style.RESET_ALL)
         
+        tprint("RLMarlbot")
+     
+        version = self.get_version()
+        
+        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot v" + version + Style.RESET_ALL)
+        print(Fore.LIGHTYELLOW_EX + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort" + Style.RESET_ALL)
+
         self.pid = pid
         self.autotoggle = autotoggle
-
+        self.minimap = minimap
         self.config = {
             "bot_toggle_key": "F1",
             "dump_game_tick_packet_key": "F2"
@@ -51,8 +58,7 @@ class NextoBot:
 
         print(Fore.LIGHTYELLOW_EX + "You can change the settings in config.json" + Style.RESET_ALL)
         print(Fore.CYAN + "For keys binding, you can find values here: https://nerivec.github.io/old-ue4-wiki/pages/list-of-keygamepad-input-names.html" + Style.RESET_ALL)
-        print(Fore.LIGHTYELLOW_EX + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort" + Style.RESET_ALL)
-
+      
         self.bot_to_use = bot or None
         
         if not self.bot_to_use:
@@ -88,15 +94,16 @@ class NextoBot:
             print(Fore.RED + "Failed to start SDK: ", e, Style.RESET_ALL)
             exit()
         
+        if self.minimap:
         
-        
-        self.minimap = MiniMap(sdk=self.sdk)
-        
-        # start a new thread for the minimap main loop
-        
-        self.minimap_thread = Thread(target=self.minimap.main)
-        self.minimap_thread.daemon = True
-        self.minimap_thread.start()
+            
+            self.minimap = MiniMap(sdk=self.sdk)
+            
+            # start a new thread for the minimap main loop
+            
+            self.minimap_thread = Thread(target=self.minimap.main)
+            self.minimap_thread.daemon = True
+            self.minimap_thread.start()
 
    
         print(Fore.LIGHTBLUE_EX + "Starting memory writer..." + Style.RESET_ALL)
@@ -273,7 +280,7 @@ class NextoBot:
                             print(Fore.LIGHTBLUE_EX + "Starting memory write thread..." + Style.RESET_ALL)
                             self.mw.start()
                 
-                if self.bot:
+                if self.bot and self.minimap:
                     self.minimap.set_game_tick_packet(game_tick_packet, self.bot.index)
                     
                 
@@ -644,7 +651,7 @@ class NextoBot:
     def display_monitoring_info(self, game_tick_packet, controller):
         
     
-        clear_lines(5)
+        clear_lines(30)
       
         
         print(Fore.LIGHTYELLOW_EX + "Bot Monitoring Info" + Style.RESET_ALL)
@@ -654,15 +661,87 @@ class NextoBot:
         # Frane number
         print(Fore.LIGHTCYAN_EX + "Frame number: " + Fore.LIGHTGREEN_EX + str(game_tick_packet.game_info.frame_num) + Style.RESET_ALL)
         
+        
+        print(Fore.LIGHTMAGENTA_EX + "Boost pads" + Style.RESET_ALL)
+        # Display boost pads (o = small boost, O = big boost, green = active, red = inactive)
+        boost_pads = self.sdk.field.boostpads
+        boost_pads_str = ""
+        for i in range(game_tick_packet.num_boost):
+            if boost_pads[i].is_active:
+                if boost_pads[i].is_big:
+                    boost_pads_str += Fore.GREEN + "O" + Style.RESET_ALL
+                else:
+                    boost_pads_str += Fore.GREEN + "o" + Style.RESET_ALL
+            else:
+                if boost_pads[i].is_big:
+                    boost_pads_str += Fore.RED + "X" + Style.RESET_ALL
+                else:
+                    boost_pads_str += Fore.RED + "x" + Style.RESET_ALL
+        
+        
+        print(boost_pads_str)
+        
+        
+        print(Fore.LIGHTMAGENTA_EX + "Players" + Style.RESET_ALL)
+        players = game_tick_packet.game_cars
+        
+        for i in range(game_tick_packet.num_cars):
+            # 0 = blue, 1 = red
+            color = Fore.BLUE if players[i].team == 0 else Fore.LIGHTYELLOW_EX
+
+            
+            player_state = ""
+            player_state +=  Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "JUMPED" + Style.RESET_ALL if players[i].jumped else Back.BLACK + "JUMPED" + Style.RESET_ALL
+            player_state += " - "
+            player_state +=  Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "DOUBLE JUMPED" + Style.RESET_ALL if players[i].double_jumped else Back.BLACK + "DOUBLE JUMPED" + Style.RESET_ALL
+            player_state += " - "
+            player_state +=  Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "SUPERSONIC" + Style.RESET_ALL if players[i].is_super_sonic else Back.BLACK +  "SUPERSONIC" + Style.RESET_ALL
+            player_state += " - "
+            player_state +=  Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "WHEELS ON GROUND" + Style.RESET_ALL if players[i].has_wheel_contact else Back.BLACK +  "WHEELS ON GROUND" + Style.RESET_ALL
+            player_state += " - "
+            player_state +=  Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "DEMOLISHED" + Style.RESET_ALL if players[i].is_demolished else Back.BLACK +  "DEMOLISHED" + Style.RESET_ALL
+            
+            
+            boost = players[i].boost 
+            # pad the boost with leading space (3 digits)
+            boost_str = " " * (3 - len(str(boost))) + str(boost)
+           
+            
+            # color the boost based on the amount
+            if boost < 33:
+                boost_str = Fore.RED + boost_str + Style.RESET_ALL
+            elif boost >= 33 and boost < 66:
+                boost_str = Fore.LIGHTYELLOW_EX + boost_str + Style.RESET_ALL
+            else:
+                boost_str = Fore.GREEN + boost_str + Style.RESET_ALL
+            
+            player_state += " - Boost: " + boost_str 
+        
+            # pad the player name with spaces
+            
+            player_name = players[i].name + " " * (20 - len(players[i].name))
+            
+            print(color + player_name + Back.RESET + Fore.RESET + " " + player_state + Style.RESET_ALL)
+        
+
+        
+    def get_version(self):
+        pyproject = toml.load("pyproject.toml")
+        return pyproject['tool']['poetry']['version']
+            
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='RLMarlbot')
     parser.add_argument('-p', '--pid', type=int, help='Rocket League process ID')
     parser.add_argument('-b', '--bot', type=str, help='Bot to use (nexto, necto, seer, element)')
     parser.add_argument('-a', '--autotoggle', action='store_true', help='Automatically toggle the bot on active round')
+    # Disable minimap
+    parser.add_argument('--no-minimap', action='store_true', help='Disable minimap')
+    
+    
     args = parser.parse_args()
 
-    bot = NextoBot(pid=args.pid, bot=args.bot, autotoggle=args.autotoggle)
+    bot = NextoBot(pid=args.pid, bot=args.bot, autotoggle=args.autotoggle, minimap=not args.no_minimap)
     
     signal.signal(signal.SIGINT, bot.exit)
     
