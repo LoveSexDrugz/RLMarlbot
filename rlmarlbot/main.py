@@ -20,10 +20,11 @@ import signal
 from helpers import serialize_to_json, clear_line, move_cursor_up, clear_lines, clear_screen
 import argparse
 from art import *
+import math
+import os
 
 
-
-VERSION = "1.5.1"
+VERSION = "1.5.2"
 
 class NextoBot:
     def __init__(self, pid=None, bot=None, autotoggle=False, minimap=True):
@@ -291,8 +292,9 @@ class NextoBot:
               
                 
       
-                    
-                self.display_monitoring_info(game_tick_packet, simple_controller_state)
+                # show info each 10 frames
+                if self.frame_num % 10 == 0:
+                    self.display_monitoring_info(game_tick_packet, simple_controller_state)
           
  
     def controller_to_input(self, controller: SimpleControllerState):
@@ -425,7 +427,8 @@ class NextoBot:
                 
                 boost_component = car.get_boost_component()
                 try:
-                    player_info.boost = int(boost_component.get_amount() * 100)
+                    # round ceil
+                    player_info.boost = int(math.ceil(boost_component.get_amount() * 100))
                 except:
                     player_info.boost = 0
             else:
@@ -543,6 +546,8 @@ class NextoBot:
             clear_screen()
 
     def disable_bot(self):
+        # clear the console
+        print("\033[H\033[J")
         self.bot = None
         self.stop_writing()
         self.last_input = None
@@ -655,37 +660,60 @@ class NextoBot:
     
         # clear the console
         print("\033[H\033[J")
+        term_width = os.get_terminal_size().columns
+        
+        def create_centered_title(title, style, back=Back.LIGHTBLACK_EX):
+            return back + Fore.WHITE + title.center(term_width) + Style.RESET_ALL
+
       
         
-        print(Fore.LIGHTYELLOW_EX + "Bot Monitoring Info" + Style.RESET_ALL)
+        print(create_centered_title("BOT LIVE MONITORING", Fore.LIGHTYELLOW_EX))
         print(Fore.LIGHTCYAN_EX + "Tick rate: " + Fore.LIGHTGREEN_EX + str(self.tick_rate) + " ticks/s" + Style.RESET_ALL)
         # Tick computation time
         print(Fore.LIGHTCYAN_EX + "Tick processing time: " + Fore.LIGHTGREEN_EX + str(round(self.last_tick_duration * 1000, 2)) + " ms" + Style.RESET_ALL)
         # Frane number
         print(Fore.LIGHTCYAN_EX + "Frame number: " + Fore.LIGHTGREEN_EX + str(game_tick_packet.game_info.frame_num) + Style.RESET_ALL)
+        # elapsed time
+        print(Fore.LIGHTCYAN_EX + "Elapsed time: " + Fore.LIGHTGREEN_EX + str(round(game_tick_packet.game_info.seconds_elapsed, 2)) + " s" + Style.RESET_ALL)
+        # Game time remaining
+        print(Fore.LIGHTCYAN_EX + "Game time remaining: " + Fore.LIGHTGREEN_EX + str(round(game_tick_packet.game_info.game_time_remaining, 2)) + " s" + Style.RESET_ALL)
+        print(create_centered_title("GAMEINFO STATE", Fore.WHITE))
+        
+        # is_round_active
+        game_state = ""
+        
+        game_state = Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "ROUND ACTIVE" + Style.RESET_ALL if game_tick_packet.game_info.is_round_active else Back.BLACK + "ROUND ACTIVE" + Style.RESET_ALL
+        game_state += " - "
+        game_state += Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "OVERTIME" + Style.RESET_ALL if game_tick_packet.game_info.is_overtime else Back.BLACK + "OVERTIME" + Style.RESET_ALL
+        game_state += " - "
+        game_state += Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "MATCH ENDED" + Style.RESET_ALL if game_tick_packet.game_info.is_match_ended else Back.BLACK + "MATCH ENDED" + Style.RESET_ALL
+        game_state += " - "
+        game_state += Style.BRIGHT + Fore.LIGHTWHITE_EX + Back.GREEN + "KICKOFF PAUSE" + Style.RESET_ALL if game_tick_packet.game_info.is_kickoff_pause else Back.BLACK + "KICKOFF PAUSE" + Style.RESET_ALL
         
         
-        print(Fore.LIGHTMAGENTA_EX + "Boost pads" + Style.RESET_ALL)
+        print(game_state)
+        print(create_centered_title("BOOSTPADS STATE", Fore.WHITE))
+    
         # Display boost pads (o = small boost, O = big boost, green = active, red = inactive)
         boost_pads = self.sdk.field.boostpads
         boost_pads_str = ""
         for i in range(game_tick_packet.num_boost):
             if boost_pads[i].is_active:
                 if boost_pads[i].is_big:
-                    boost_pads_str += Fore.GREEN + "O" + Style.RESET_ALL
+                    boost_pads_str += Fore.GREEN + " ⬤ " + Style.RESET_ALL
                 else:
-                    boost_pads_str += Fore.GREEN + "o" + Style.RESET_ALL
+                    boost_pads_str += Fore.GREEN + " ● " + Style.RESET_ALL
             else:
                 if boost_pads[i].is_big:
-                    boost_pads_str += Fore.RED + "X" + Style.RESET_ALL
+                    boost_pads_str += Fore.RED + " ◯ " + Style.RESET_ALL
                 else:
-                    boost_pads_str += Fore.RED + "x" + Style.RESET_ALL
+                    boost_pads_str += Fore.RED + " ○ " + Style.RESET_ALL
         
         
         print(boost_pads_str)
         
         
-        print(Fore.LIGHTMAGENTA_EX + "Players" + Style.RESET_ALL)
+        print(create_centered_title("PLAYERS STATE", Fore.WHITE))
         players = game_tick_packet.game_cars
         
         for i in range(game_tick_packet.num_cars):
@@ -725,6 +753,17 @@ class NextoBot:
             player_name = players[i].name + " " * (20 - len(players[i].name))
             
             print(color + player_name + Back.RESET + Fore.RESET + " " + player_state + Style.RESET_ALL)
+            
+        print(create_centered_title("INPUTS STATE", Fore.WHITE))
+        print(Fore.BLUE + "Throttle: " + Fore.GREEN + str(controller.throttle) + Style.RESET_ALL)
+        print(Fore.BLUE + "Steer: " + Fore.GREEN + str(controller.steer) + Style.RESET_ALL)
+        print(Fore.BLUE + "Pitch: " + Fore.GREEN + str(controller.pitch) + Style.RESET_ALL)
+        print(Fore.BLUE + "Yaw: " + Fore.GREEN + str(controller.yaw) + Style.RESET_ALL)
+        print(Fore.BLUE + "Roll: " + Fore.GREEN + str(controller.roll) + Style.RESET_ALL)
+        print(Fore.BLUE + "Jump: " + Fore.GREEN + str(controller.jump) + Style.RESET_ALL)
+        print(Fore.BLUE + "Boost: " + Fore.GREEN + str(controller.boost) + Style.RESET_ALL)
+        print(Fore.BLUE + "Handbrake: " + Fore.GREEN + str(controller.handbrake) + Style.RESET_ALL)
+      
 
             
 
