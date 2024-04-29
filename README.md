@@ -9,6 +9,20 @@ I recommend to look at the RLSDK-Python repository to understand how the bot wor
 - Python 3.11.0 (x64)
 - Pyinstaller if you want to build the exe
 
+
+## CLI Options
+
+```bash
+RLMarlbot
+
+options:
+  -h, --help         show this help message and exit
+  -p PID, --pid PID  Rocket League process ID
+  -b BOT, --bot BOT  Bot to use (nexto, necto, seer, element)
+  -a, --autotoggle   Automatically toggle the bot on active round
+```
+
+
 ## Installation
 
 ```bash	
@@ -58,3 +72,4 @@ RLMarlbot is a bot that uses the RLSDK Python package to read data from RocketLe
 - **Thorami**: For giving me some very useful tips, especially on how to obtain the base addresses of GNames and GObjects.
 - **RLBot**: For having created a standard interface for bot creation.
 - **Bardak**: For testing
+- **AScriver**: Contribute to improve the RLSDK
