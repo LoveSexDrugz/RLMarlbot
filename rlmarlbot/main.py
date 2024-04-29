@@ -20,7 +20,7 @@ import signal
 from helpers import serialize_to_json, clear_line, move_cursor_up, clear_lines, clear_screen
 import argparse
 from art import *
-import toml
+
 
 
 VERSION = "1.5.1"
@@ -724,12 +724,7 @@ class NextoBot:
             player_name = players[i].name + " " * (20 - len(players[i].name))
             
             print(color + player_name + Back.RESET + Fore.RESET + " " + player_state + Style.RESET_ALL)
-        
 
-        
-    def get_version(self):
-        pyproject = toml.load("pyproject.toml")
-        return pyproject['tool']['poetry']['version']
             
 
 if __name__ == '__main__':
