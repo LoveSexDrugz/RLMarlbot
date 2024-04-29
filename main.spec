@@ -16,6 +16,7 @@ a = Analysis(
         ('rlmarlbot/element/model.p', 'rlmarlbot/element'),
         ('rlmarlbot/helpers.py', '.')
 
+
     ],
     hiddenimports=['torch', 'rlgym_compat', 'sklearn'],
     hookspath=[],

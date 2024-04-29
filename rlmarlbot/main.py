@@ -22,15 +22,17 @@ import argparse
 from art import *
 import toml
 
+
+VERSION = "1.5.1"
+
 class NextoBot:
     def __init__(self, pid=None, bot=None, autotoggle=False, minimap=True):
         just_fix_windows_console()
         
         tprint("RLMarlbot")
-     
-        version = self.get_version()
+    
         
-        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot v" + version + Style.RESET_ALL)
+        print(Fore.LIGHTMAGENTA_EX + "RLMarlbot v" + VERSION + Style.RESET_ALL)
         print(Fore.LIGHTYELLOW_EX + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort" + Style.RESET_ALL)
 
         self.pid = pid
