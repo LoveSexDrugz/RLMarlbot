@@ -43,17 +43,18 @@ from rlgym_compat import GameState
 import numpy as np
 from element.sequences.speedflip import Speedflip
 
-VERSION = "1.5.3"
+VERSION = "1.5.4"
 
 
 class NextoBot:
 
-    def __init__(self, pid=None, bot=None, autotoggle=False, minimap=True):
+    def __init__(self, pid=None, bot=None, autotoggle=False, minimap=True, monitoring=False):
         just_fix_windows_console()
 
         tprint("RLMarlbot")
 
         print(Fore.LIGHTMAGENTA_EX + "RLMarlbot v" + VERSION + Style.RESET_ALL)
+        print(Fore.WHITE + "Run with --help for command line options" + Style.RESET_ALL)
         print(
             Fore.LIGHTYELLOW_EX
             + "Please, give me a star on GitHub: https://github.com/MarlBurroW/RLMarlbot, this work takes a lot of time and effort"
@@ -63,6 +64,7 @@ class NextoBot:
         self.pid = pid
         self.autotoggle = autotoggle
         self.minimap = minimap
+        self.monitoring = monitoring
         self.config = {"bot_toggle_key": "F1", "dump_game_tick_packet_key": "F2"}
 
         try:
@@ -333,7 +335,7 @@ class NextoBot:
                 self.last_tick_duration = time.perf_counter() - tick_duration
 
                 # show info each 10 frames
-                if self.frame_num % 10 == 0:
+                if self.monitoring and self.frame_num % 10 == 0:
                     self.display_monitoring_info(
                         game_tick_packet, simple_controller_state
                     )
@@ -686,11 +688,10 @@ class NextoBot:
                 self.bot.initialize_agent(self.field_info)
                 print(Fore.LIGHTGREEN_EX + "Element enabled" + Style.RESET_ALL)
 
-            clear_screen()
+            
 
     def disable_bot(self):
-        # clear the console
-        print("\033[H\033[J")
+      
         self.bot = None
         self.stop_writing()
         self.last_input = None
@@ -1073,7 +1074,9 @@ if __name__ == "__main__":
         help="Automatically toggle the bot on active round",
     )
     # Disable minimap
-    parser.add_argument("--no-minimap", action="store_true", help="Disable minimap")
+    parser.add_argument("--minimap", action="store_true", help="Enable minimap")
+    parser.add_argument("--monitoring", action="store_true", help="Enable monitoring")
+    
 
     args = parser.parse_args()
 
@@ -1081,7 +1084,8 @@ if __name__ == "__main__":
         pid=args.pid,
         bot=args.bot,
         autotoggle=args.autotoggle,
-        minimap=not args.no_minimap,
+        minimap=args.minimap,
+        monitoring=args.monitoring
     )
 
     signal.signal(signal.SIGINT, bot.exit)
