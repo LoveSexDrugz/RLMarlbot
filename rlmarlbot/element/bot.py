@@ -56,6 +56,7 @@ class Element(BaseAgent):
                     self.kickoff_seq = Speedflip(player)
 
                 if player == closest and self.kickoff_seq.is_valid(player, self.game_state):
+                   
                     self.action = np.asarray(self.kickoff_seq.get_action(player, self.game_state, self.action))
                     self.update_controls(self.action)
                     return self.controls

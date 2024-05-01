@@ -68,7 +68,7 @@ class Speedflip(Sequence):
 
         if self.state == 'cancel_flip':
             boost = 1 if np.linalg.norm(car.linear_velocity) < 2295 else 0
-            print('Boost: {} - Speed: {}'.format(boost, np.linalg.norm(car.linear_velocity)))
+            
             if not player.on_ground:
                 return [1, 0, 1, self.yaw_strength * self.direction, self.direction, 0, boost, 0]
             else:
