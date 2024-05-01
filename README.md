@@ -69,6 +69,10 @@ The compiled binary is here:  `rlnexto_python/memory_writer/memory_writer.pyd` s
 
 RLMarlbot is a bot that uses the RLSDK Python package to read data from RocketLeague.exe. It uses the data to build a GameTickPacket (Structure of data defined by RLBot framework) and put the data into the Nexto RLBot agent. The Agent compute data in the AI torch model and return a SimpleControllerState that contains the car inputs data. Then inputs are written in the game memory with a native python library written in C++ (memory_writer.pyd) to be able to overwrite car inputs faster than the game loop.
 
+## Discord
+I created a discord so the community can discuss improvements, bugs, or just help each other.
+https://discord.gg/pfsBQAqZ
+
 ## Credits
 
 - **Rolv-Arild** - Necto/Nexto model + RLBot agent
