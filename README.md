@@ -13,6 +13,8 @@ I recommend to look at the RLSDK-Python repository to understand how the bot wor
 ## CLI Options
 
 ```bash
+usage: main.py [-h] [-p PID] [-b BOT] [-a] [--no-minimap]
+
 RLMarlbot
 
 options:
@@ -20,6 +22,7 @@ options:
   -p PID, --pid PID  Rocket League process ID
   -b BOT, --bot BOT  Bot to use (nexto, necto, seer, element)
   -a, --autotoggle   Automatically toggle the bot on active round
+  --no-minimap       Disable minimap
 ```
 
 
