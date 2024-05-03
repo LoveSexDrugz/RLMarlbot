@@ -5,7 +5,7 @@ I recommend to look at the RLSDK-Python repository to understand how the bot wor
 
 ## Disclaimer
 
-⚠️⚠️⚠️ RLMarlbot is designed to facilitate the use of bots in private matches without the need for RLBot. It should be used primarily for testing and debugging by botmakers. However, this tool employs advanced reverse engineering techniques that could legitimately be considered cheating by the game's standards. I strongly advise against using RLMarlbot in ranked or casual matches. Your Rocket League account is likely to be banned quickly if you violate this rule.
+⚠️⚠️⚠️ RLMarlbot is designed to facilitate the use of bots in private matches with your friends without the need for RLBot. It should be used primarily for testing and debugging by botmakers. However, this tool employs advanced reverse engineering techniques that could legitimately be considered cheating by the game's standards. I strongly advise against using RLMarlbot in ranked or casual matches. Your Rocket League account is likely to be banned quickly if you violate this rule.
 
 ## Requirements
 - [Poetry](https://python-poetry.org/) to install dependencies
