@@ -49,7 +49,7 @@ VERSION = "1.5.4"
 class RLMarlbot:
 
     def __init__(
-        self, pid=None, bot=None, autotoggle=False, minimap=True, monitoring=False
+        self, pid=None, bot=None,  minimap=True, monitoring=False
     ):
         just_fix_windows_console()
 
@@ -64,7 +64,7 @@ class RLMarlbot:
         )
 
         self.pid = pid
-        self.autotoggle = autotoggle
+      
         self.minimap = minimap
         self.monitoring = monitoring
         self.config = {"bot_toggle_key": "F1", "dump_game_tick_packet_key": "F2"}
@@ -1108,12 +1108,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "-b", "--bot", type=str, help="Bot to use (nexto, necto, seer, element)"
     )
-    parser.add_argument(
-        "-a",
-        "--autotoggle",
-        action="store_true",
-        help="Automatically toggle the bot on active round",
-    )
+
     # Disable minimap
     parser.add_argument("--minimap", action="store_true", help="Enable minimap")
     parser.add_argument("--monitoring", action="store_true", help="Enable monitoring")
@@ -1123,7 +1118,6 @@ if __name__ == "__main__":
     bot = RLMarlbot(
         pid=args.pid,
         bot=args.bot,
-        autotoggle=args.autotoggle,
         minimap=args.minimap,
         monitoring=args.monitoring,
     )
