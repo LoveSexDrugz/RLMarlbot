@@ -1,7 +1,11 @@
 # RLMarlbot
 
-Nexto bot based on my [python SDK](https://github.com/MarlBurroW/RLSDK-Python).
+Bot player based on my [python SDK](https://github.com/MarlBurroW/RLSDK-Python) and RLBot standard.
 I recommend to look at the RLSDK-Python repository to understand how the bot works.
+
+## Disclaimer
+
+⚠️⚠️⚠️ RLMarlbot is designed to facilitate the use of bots in private matches with your friends without the need for RLBot. It should be used primarily for testing and debugging by botmakers. However, this tool employs advanced reverse engineering techniques that could legitimately be considered cheating by the game's standards. I strongly advise against using RLMarlbot in ranked or casual matches. Your Rocket League account is likely to be banned quickly if you violate this rule.
 
 ## Requirements
 - [Poetry](https://python-poetry.org/) to install dependencies
@@ -79,4 +83,5 @@ https://discord.gg/pfsBQAqZ
 - **Thorami**: For giving me some very useful tips, especially on how to obtain the base addresses of GNames and GObjects.
 - **RLBot**: For having created a standard interface for bot creation.
 - **Bardak**: For testing
+- **Kxqs**: For help the community and his feedbacks
 - **AScriver**: Contribute to improve the RLSDK
