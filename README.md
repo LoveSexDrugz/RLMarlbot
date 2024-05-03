@@ -83,5 +83,5 @@ https://discord.gg/pfsBQAqZ
 - **Thorami**: For giving me some very useful tips, especially on how to obtain the base addresses of GNames and GObjects.
 - **RLBot**: For having created a standard interface for bot creation.
 - **Bardak**: For testing
-- **Kxqs**: For help the community
+- **Kxqs**: For help the community and his feedbacks
 - **AScriver**: Contribute to improve the RLSDK
