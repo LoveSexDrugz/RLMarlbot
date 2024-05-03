@@ -46,9 +46,11 @@ from element.sequences.speedflip import Speedflip
 VERSION = "1.5.4"
 
 
-class NextoBot:
+class RLMarlbot:
 
-    def __init__(self, pid=None, bot=None, autotoggle=False, minimap=True, monitoring=False):
+    def __init__(
+        self, pid=None, bot=None, autotoggle=False, minimap=True, monitoring=False
+    ):
         just_fix_windows_console()
 
         tprint("RLMarlbot")
@@ -161,6 +163,7 @@ class NextoBot:
 
         print(Fore.LIGHTGREEN_EX + "SDK started" + Style.RESET_ALL)
 
+        self.bot_enabled = False
         self.frame_num = 0
         self.bot = None
         self.field_info = None
@@ -217,67 +220,87 @@ class NextoBot:
 
     def on_game_event_destroyed(self, event: GameEvent):
         print(Fore.LIGHTRED_EX + "Game event destroyed" + Style.RESET_ALL)
+        self.stop_writing()
         self.reset_virtual_seconds_elapsed()
-        self.disable_bot()
+        self.reset_info()
 
     def on_tick(self, event: EventPlayerTick):
-        if not self.field_info and self.sdk.current_game_event:
+
+        # All the instructions in this method are executed at each tick of the game
+        # Each frame, we will try to get all required information to be able to reach the end of the method
+        # If any data is missing, we silently ignore the error and continue to the next frame to avoid spamming the console with errors
+        # The tricky is about the memory writer that evolves in a different thread, so we need to be careful about the memory writer state
+        # because if it writes when any data is missing, it will crash the game
+        # So we want to stop the memory writer if any data is missing and restart it when all data is available
+
+        # If the bot is not enabled, we don't do anything
+        if not self.bot_enabled:
+            # writing should not be running at this step, but we stop it just in case
+            self.stop_writing()
+            return
+
+        # Increment the frame number
+        self.frame_num += 1
+
+        # Get the game event from the SDK at each tick
+        try:
+            game_event = self.sdk.get_game_event()
+        except:
+            self.stop_writing()
+            pass
+
+        # If the field info is not generated, we try to generate it
+        if not self.field_info and game_event:
             try:
                 self.generate_field_info()
             except:
+                self.stop_writing()
                 pass
 
-        if not self.bot and self.autotoggle:
+        # We only continue if the game event and the field info are available because we need them to instantiate the bot
+        if game_event and self.field_info:
 
-            game_event = self.sdk.get_game_event()
-            if game_event:
+            # If the bot is not instantiated, we try to instantiate it
+            if not self.bot:
                 try:
-                    round_active = game_event.is_round_active()
+                    self.instantiate_bot(game_event, self.field_info)
                 except:
+                    self.stop_writing()
                     pass
 
-                if round_active:
-                    try:
-                        self.enable_bot()
-                    except Exception as e:
-                        print(Fore.RED + "Failed to enable bot: ", e, Style.RESET_ALL)
-                        self.disable_bot()
-                    return
+            # If the bot is instantiated, we continue
+            if self.bot:
 
-        if self.bot:
+                # Monitoring information, only if monitoring is enabled
+                if self.monitoring:
 
-            if not self.last_tick_start_time:
-                self.last_tick_start_time = time.perf_counter()
+                    if not self.last_tick_start_time:
+                        self.last_tick_start_time = time.perf_counter()
+                    tick_time = time.perf_counter() - self.last_tick_start_time
+                    tick_duration = time.perf_counter()
 
-            tick_time = time.perf_counter() - self.last_tick_start_time
-            tick_duration = time.perf_counter()
+                    # Calculate some monitoring information
+                    if tick_time > 1:
+                        self.last_tick_start_time = time.perf_counter()
+                        self.tick_rate = self.tick_counter
+                        self.tick_counter = 0
 
-            # Calculate some monitoring information
-            if tick_time > 1:
-                self.last_tick_start_time = time.perf_counter()
-                self.tick_rate = self.tick_counter
-                self.tick_counter = 0
+                    else:
+                        self.tick_counter += 1
 
-            else:
-                self.tick_counter += 1
-            self.frame_num += 1
-
-            game_event = self.sdk.current_game_event
-            if game_event:
-
+                # Generate game tick packet
+                game_tick_packet = None
                 try:
                     game_tick_packet = self.generate_game_tick_packet(game_event)
                     self.last_game_tick_packet = game_tick_packet
                 except Exception as e:
-                    print(
-                        Fore.RED + "Failed to generate game tick packet: ",
-                        e,
-                        Style.RESET_ALL,
-                    )
-                    self.disable_bot()
-                    return
+                    self.stop_writing()
+                    pass
 
+                # Prepare the controller state
                 simple_controller_state = None
+
+                # Built-in kickoff handling (disabled for now)
 
                 # if game_tick_packet.game_info.is_kickoff_pause:
 
@@ -287,58 +310,65 @@ class NextoBot:
 
                 #     simple_controller_state = self.do_kickoff(game_tick_packet)
 
-                if (
-                    not simple_controller_state
-                    and game_tick_packet.game_info.is_round_active
-                ):
-
+                # Retrieve the controller state from the bot if game_tick_packet is available
+                if not simple_controller_state and game_tick_packet:
                     try:
                         simple_controller_state = self.bot.get_output(game_tick_packet)
                     except Exception as e:
-                        print(
-                            Fore.RED + "Failed to get bot output: ", e, Style.RESET_ALL
-                        )
-                        self.disable_bot()
-                        return
+                        self.stop_writing()
+                        pass
 
+                # If no controller state is returned, create a default one
                 if not simple_controller_state:
                     simple_controller_state = SimpleControllerState()
 
+                # Convert the controller state to a bytearray
                 bytearray_input = self.controller_to_input(simple_controller_state)
 
-                local_players = game_event.get_local_players()
+                try:
+                    # Get the local players controllers to write the input
+                    local_players = game_event.get_local_players()
+                except:
+                    self.stop_writing()
+                    local_players = []
+                    pass
 
+                # Check if there are local players
                 if len(local_players) > 0:
+
+                    # Currently only supports one local player so we take the first one
                     player_controller = local_players[0]
+
+                    # Construct the input address by adding an offset
                     input_address = player_controller.address + 0x0990
 
-                    if input_address:
+                    # Write the input to memory
 
-                        self.last_input = bytearray_input
-                        self.input_address = input_address
+                    self.last_input = bytearray_input
+                    self.input_address = input_address
 
-                        self.mw.set_memory_data(input_address, bytearray_input)
+                    # Send new input to the memory writer
+                    self.mw.set_memory_data(input_address, bytearray_input)
 
-                        if self.write_running == False:
-                            self.write_running = True
-                            print(
-                                Fore.LIGHTBLUE_EX
-                                + "Starting memory write thread..."
-                                + Style.RESET_ALL
-                            )
+                    # at this stage, we can start the memory writer thread if it's not running
+                    if self.write_running == False:
+                        self.start_writing()
+                else:
+                    self.stop_writing()
 
-                            self.start_writing()
+                # Next lines are for monitoring purposes only and does not affect the bot
 
                 if self.minimap:
                     self.minimap.set_game_tick_packet(game_tick_packet, self.bot.index)
 
-                self.last_tick_duration = time.perf_counter() - tick_duration
+                if self.monitoring:
 
-                # show info each 10 frames
-                if self.monitoring and self.frame_num % 10 == 0:
-                    self.display_monitoring_info(
-                        game_tick_packet, simple_controller_state
-                    )
+                    self.last_tick_duration = time.perf_counter() - tick_duration
+                    # show info each 10 frames
+                    if self.frame_num % 10 == 0:
+                        self.display_monitoring_info(
+                            game_tick_packet, simple_controller_state
+                        )
 
     def on_key_pressed(self, event):
 
@@ -347,14 +377,10 @@ class NextoBot:
         if event.key == self.config["bot_toggle_key"]:
 
             if event.type == "pressed":
-                if self.bot:
+                if self.bot_enabled:
                     self.disable_bot()
                 else:
-                    try:
-                        self.enable_bot()
-                    except Exception as e:
-                        print(Fore.RED + "Failed to enable bot: ", e, Style.RESET_ALL)
-                        self.disable_bot()
+                    self.enable_bot()
 
         if event.key == self.config["dump_game_tick_packet_key"]:
             if event.type == "pressed":
@@ -370,19 +396,26 @@ class NextoBot:
     #########################
 
     def start_writing(self):
+
         self.mw.start()
+        self.write_running = True
+        print(Fore.LIGHTBLUE_EX + "Memory writer thread started" + Style.RESET_ALL)
 
     def stop_writing(self):
+        if not self.write_running:
+            return
+
         self.write_running = False
 
         if self.input_address:
             # Reset the input state to avoid handbrake bug
             self.reset_inputs()
+            # wait a little to be sure the input is reset
             time.sleep(0.1)
 
         self.mw.stop()
 
-        print(Fore.LIGHTRED_EX + "Writing stopped" + Style.RESET_ALL)
+        print(Fore.LIGHTRED_EX + "Memory writer thread stopped" + Style.RESET_ALL)
 
     def reset_inputs(self):
         if self.input_address:
@@ -630,47 +663,70 @@ class NextoBot:
     ########################
 
     def enable_bot(self):
-        game_event = self.sdk.get_game_event()
         self.frame_num = 0
+        self.bot_enabled = True
 
-        if game_event:
-            game_event = self.sdk.get_game_event()
+    def disable_bot(self):
 
-            local_player_controllers = game_event.get_local_players()
+        self.stop_writing()
+        self.reset_info()
 
-            if len(local_player_controllers) == 0:
-                raise Exception("No local players found")
+        if self.minimap:
+            self.minimap.disable()
+        self.bot_enabled = False
+        print(Fore.LIGHTRED_EX + "Bot disabled" + Style.RESET_ALL)
 
-            if len(local_player_controllers) > 1:
-                raise Exception("Multiple local players not supported")
+    ##########################
+    ######## METHODS #########
+    ##########################
 
-            player_controller = local_player_controllers[0]
+    def reset_info(self):
+        self.field_info = None
+        self.bot = None
+        self.last_input = None
+        self.input_address = None
+        self.last_game_tick_packet = None
+        self.frame_num = 0
+        self.last_tick_start_time = None
+        self.tick_rate = 0
+        self.tick_counter = 0
+        self.last_tick_duration = 0
 
-            player_pri = player_controller.get_pri()
-            player_name = player_pri.get_player_name()
+    def instantiate_bot(self, game_event: GameEvent, field_info: FieldInfoPacket):
 
-            if player_pri.is_spectator():
-                raise Exception("Player is spectator")
+        local_player_controllers = game_event.get_local_players()
 
-            pris = game_event.get_pris()
+        if len(local_player_controllers) == 0:
+            raise Exception("No local players found")
 
-            for i, pri in enumerate(pris):
-                if pri.address == player_pri.address:
-                    pri_index = i
-                    print("Player car index: ", pri_index)
-                    break
-            else:
-                raise Exception("Player car not found")
+        if len(local_player_controllers) > 1:
+            raise Exception("Multiple local players not supported")
+        player_controller = local_player_controllers[0]
 
-            try:
-                team_index = player_pri.get_team_info().get_index()
-            except:
-                raise Exception("Failed to get team index")
-            
-            
-            if game_event.is_round_active():
-                self.round_active = True
+        player_pri = player_controller.get_pri()
+        player_name = player_pri.get_player_name()
 
+        if player_pri.is_spectator():
+            raise Exception("Player is spectator")
+
+        pris = game_event.get_pris()
+
+        for i, pri in enumerate(pris):
+            if pri.address == player_pri.address:
+                pri_index = i
+                break
+        else:
+            raise Exception("Player car not found")
+
+        try:
+            team_index = player_pri.get_team_info().get_index()
+        except:
+            raise Exception("Failed to get team index")
+
+        if game_event.is_round_active():
+            self.round_active = True
+
+        try:
             if self.bot_to_use == "nexto":
                 self.bot = Nexto(player_name, team_index, pri_index)
                 self.bot.initialize_agent(self.field_info)
@@ -687,24 +743,9 @@ class NextoBot:
                 self.bot = Element(player_name, team_index, pri_index)
                 self.bot.initialize_agent(self.field_info)
                 print(Fore.LIGHTGREEN_EX + "Element enabled" + Style.RESET_ALL)
-
-            
-
-    def disable_bot(self):
-      
-        self.bot = None
-        self.stop_writing()
-        self.last_input = None
-        self.input_address = None
-        self.last_game_tick_packet = None
-        self.frame_num = 0
-        if self.minimap:
-            self.minimap.disable()
-        self.last_tick_start_time = None
-        self.tick_rate = 0
-        self.tick_counter = 0
-        self.last_tick_duration = 0
-        print(Fore.LIGHTRED_EX + "Bot disabled" + Style.RESET_ALL)
+        except Exception as e:
+            print(Fore.RED + "Failed to instantiate bot: ", e, Style.RESET_ALL)
+            self.bot = None
 
     ##########################
     ##### HELPER METHODS #####
@@ -1076,16 +1117,15 @@ if __name__ == "__main__":
     # Disable minimap
     parser.add_argument("--minimap", action="store_true", help="Enable minimap")
     parser.add_argument("--monitoring", action="store_true", help="Enable monitoring")
-    
 
     args = parser.parse_args()
 
-    bot = NextoBot(
+    bot = RLMarlbot(
         pid=args.pid,
         bot=args.bot,
         autotoggle=args.autotoggle,
         minimap=args.minimap,
-        monitoring=args.monitoring
+        monitoring=args.monitoring,
     )
 
     signal.signal(signal.SIGINT, bot.exit)
