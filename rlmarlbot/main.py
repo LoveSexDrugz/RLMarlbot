@@ -7,21 +7,18 @@ from element.bot import Element
 from rlbot.utils.structures.game_data_struct import (
     BallInfo,
     Vector3,
-    Rotator,
     FieldInfoPacket,
     BoostPad,
     GoalInfo,
     GameTickPacket,
-    Physics,
     GameInfo,
-    TileInfo,
     TeamInfo,
     PlayerInfo,
     BoostPadState,
 )
 import sys
 import time
-from rlbot.agents.base_agent import BaseAgent, SimpleControllerState
+from rlbot.agents.base_agent import SimpleControllerState
 from prompt_toolkit import prompt
 import struct
 from threading import Event
@@ -43,13 +40,13 @@ from rlgym_compat import GameState
 import numpy as np
 from element.sequences.speedflip import Speedflip
 
-VERSION = "1.5.4"
+VERSION = "1.5.5"
 
 
 class RLMarlbot:
 
     def __init__(
-        self, pid=None, bot=None,  minimap=True, monitoring=False
+        self, pid=None, bot=None,  minimap=True, monitoring=False, debug_keys=None
     ):
         just_fix_windows_console()
 
@@ -68,6 +65,7 @@ class RLMarlbot:
         self.minimap = minimap
         self.monitoring = monitoring
         self.config = {"bot_toggle_key": "F1", "dump_game_tick_packet_key": "F2"}
+        self.debug_keys = debug_keys
 
         try:
             with open("config.json", "r") as f:
@@ -372,7 +370,9 @@ class RLMarlbot:
 
     def on_key_pressed(self, event):
 
-        # print("Key pressed: ", event.key, event.type)
+        if self.debug_keys:
+            print(Fore.LIGHTYELLOW_EX + "Key pressed: ", Fore.LIGHTGREEN_EX + event.key, Style.RESET_ALL)
+        
 
         if event.key == self.config["bot_toggle_key"]:
 
@@ -550,7 +550,7 @@ class RLMarlbot:
                 try:
                     # round ceil
                     player_info.boost = int(
-                        math.ceil(boost_component.get_amount() * 100)
+                        math.round(boost_component.get_amount() * 100)
                     )
                 except:
                     player_info.boost = 0
@@ -722,9 +722,6 @@ class RLMarlbot:
             team_index = player_pri.get_team_info().get_index()
         except:
             raise Exception("Failed to get team index")
-
-        if game_event.is_round_active():
-            self.round_active = True
 
         try:
             if self.bot_to_use == "nexto":
@@ -907,7 +904,6 @@ class RLMarlbot:
         )
         print(create_centered_title("GAMEINFO STATE", Fore.WHITE))
 
-        # is_round_active
         game_state = ""
 
         game_state = (
@@ -1112,6 +1108,7 @@ if __name__ == "__main__":
     # Disable minimap
     parser.add_argument("--minimap", action="store_true", help="Enable minimap")
     parser.add_argument("--monitoring", action="store_true", help="Enable monitoring")
+    parser.add_argument("--debug-keys", action="store_true", help="Print all keys pressed in game in the console (Gamepad and Keyboard)")
 
     args = parser.parse_args()
 
@@ -1120,6 +1117,7 @@ if __name__ == "__main__":
         bot=args.bot,
         minimap=args.minimap,
         monitoring=args.monitoring,
+        debug_keys=args.debug_keys,
     )
 
     signal.signal(signal.SIGINT, bot.exit)
