@@ -40,13 +40,20 @@ from rlgym_compat import GameState
 import numpy as np
 from element.sequences.speedflip import Speedflip
 
-VERSION = "1.5.5"
+VERSION = "1.5.6"
 
 
 class RLMarlbot:
 
     def __init__(
-        self, pid=None, bot=None,  minimap=True, monitoring=False, debug_keys=None
+        self,
+        pid=None,
+        bot=None,
+        minimap=True,
+        monitoring=False,
+        debug_keys=None,
+        built_in_kickoff=False,
+        clock=False
     ):
         just_fix_windows_console()
 
@@ -61,11 +68,13 @@ class RLMarlbot:
         )
 
         self.pid = pid
-      
+
         self.minimap = minimap
         self.monitoring = monitoring
         self.config = {"bot_toggle_key": "F1", "dump_game_tick_packet_key": "F2"}
         self.debug_keys = debug_keys
+        self.built_in_kickoff = built_in_kickoff
+        self.clock = clock
 
         try:
             with open("config.json", "r") as f:
@@ -160,7 +169,7 @@ class RLMarlbot:
         print(Fore.LIGHTGREEN_EX + "Memory writer started" + Style.RESET_ALL)
 
         print(Fore.LIGHTGREEN_EX + "SDK started" + Style.RESET_ALL)
-
+        
         self.bot_enabled = False
         self.frame_num = 0
         self.bot = None
@@ -171,16 +180,23 @@ class RLMarlbot:
         self.tick_counter = 0
         self.tick_rate = 0
         self.last_tick_duration = 0
+        
+        # KICKOPFF MEMBERS
 
         self.kickoff_seq = None
         self.kickoff_prev_time = 0
         self.kickoff_game_state = GameState = None
         self.kickoff_action = None
         self.kickoff_start_frame_num = 0
+        
+        # CLOCK
+        self.clock_thread = None
+        
 
         self.round_active = False
-
-        self.sdk.event.subscribe(EventTypes.ON_PLAYER_TICK, self.on_tick)
+        
+        if not self.clock:
+            self.sdk.event.subscribe(EventTypes.ON_PLAYER_TICK, self.on_tick)
         self.sdk.event.subscribe(EventTypes.ON_KEY_PRESSED, self.on_key_pressed)
         self.sdk.event.subscribe(
             EventTypes.ON_GAME_EVENT_DESTROYED, self.on_game_event_destroyed
@@ -192,6 +208,10 @@ class RLMarlbot:
         self.virtual_seconds_elapsed = time.time()
 
         self.last_game_tick_packet = None
+        
+        
+        if self.clock:
+            self.start_clock()
 
         print(
             Fore.LIGHTYELLOW_EX
@@ -240,6 +260,23 @@ class RLMarlbot:
         # Increment the frame number
         self.frame_num += 1
 
+        # Init mtick onitoring information, only if monitoring is enabled ofc
+        if self.monitoring:
+
+            if not self.last_tick_start_time:
+                self.last_tick_start_time = time.perf_counter()
+            tick_time = time.perf_counter() - self.last_tick_start_time
+            tick_duration = time.perf_counter()
+
+            # Calculate some monitoring information
+            if tick_time > 1:
+                self.last_tick_start_time = time.perf_counter()
+                self.tick_rate = self.tick_counter
+                self.tick_counter = 0
+
+            else:
+                self.tick_counter += 1
+
         # Get the game event from the SDK at each tick
         try:
             game_event = self.sdk.get_game_event()
@@ -258,121 +295,211 @@ class RLMarlbot:
         # We only continue if the game event and the field info are available because we need them to instantiate the bot
         if game_event and self.field_info:
 
+            # Get the main PRI to know on which player the bot is running
+
+            try:
+                local_player_controllers = game_event.get_local_players()
+
+                if len(local_player_controllers) == 0:
+                    raise Exception("No local players found")
+
+                if len(local_player_controllers) > 1:
+                    raise Exception("Multiple local players not supported")
+                player_controller = local_player_controllers[0]
+
+                player_pri = player_controller.get_pri()
+            except:
+                self.stop_writing()
+                # if the player PRI can't be retrieved, we stop the memory writer and return, because we can't continue without it
+                return
+
+            # now we wnant to if the PRI has a car, if not we stop the memory writer and return
+
+            player_car = None
+
+            try:
+                player_car = player_pri.get_car()
+            except:
+                self.stop_writing()
+                # if the player car can't be retrieved, we stop the memory writer and return, because we can't continue without it
+                return
+
+            # Find the player name
+
+            try:
+                player_name = player_pri.get_player_name()
+            except:
+                # if we can't get the player name it doesn't matter, we can continue
+                player_name = "Unknown"
+                pass
+
+            # Find the car index
+            try:
+
+                cars = game_event.get_cars()
+
+                car_index = None
+
+                for i, car in enumerate(cars):
+                    if car.address == player_car.address:
+                        car_index = i
+                        break
+                else:
+                    raise Exception("Player car not found")
+            except:
+                self.stop_writing()
+                return
+
+            # Find the team index
+            try:
+                team_index = player_pri.get_team_info().get_index()
+            except:
+                # if the player has no team info, it means he is probably a spectator, so we stop the memory writer and return
+                self.stop_writing()
+                return
+
             # If the bot is not instantiated, we try to instantiate it
             if not self.bot:
                 try:
-                    self.instantiate_bot(game_event, self.field_info)
+                    self.instantiate_bot(
+                        game_event, self.field_info, player_name, team_index, car_index
+                    )
                 except:
                     self.stop_writing()
                     pass
 
             # If the bot is instantiated, we continue
             if self.bot:
-
-                # Monitoring information, only if monitoring is enabled
-                if self.monitoring:
-
-                    if not self.last_tick_start_time:
-                        self.last_tick_start_time = time.perf_counter()
-                    tick_time = time.perf_counter() - self.last_tick_start_time
-                    tick_duration = time.perf_counter()
-
-                    # Calculate some monitoring information
-                    if tick_time > 1:
-                        self.last_tick_start_time = time.perf_counter()
-                        self.tick_rate = self.tick_counter
-                        self.tick_counter = 0
-
-                    else:
-                        self.tick_counter += 1
+                
+                
+                # update team index and car index in the bot
+                self.bot.team = team_index
+                self.bot.index = car_index
 
                 # Generate game tick packet
                 game_tick_packet = None
                 try:
-                    game_tick_packet = self.generate_game_tick_packet(game_event)
+                    game_tick_packet = self.generate_game_tick_packet(game_event, cars)
                     self.last_game_tick_packet = game_tick_packet
                 except Exception as e:
                     self.stop_writing()
                     pass
+                
 
-                # Prepare the controller state
-                simple_controller_state = None
+                # we don't do anything else if the game_tick_packet is not available
+                if game_tick_packet:
 
-                # Built-in kickoff handling (disabled for now)
+                    # compare with the previous game_tick_packet to create some needed data
+                    starting_kickoff = False
+                    if self.last_game_tick_packet:
+                        if (
+                            not game_tick_packet.game_info.is_kickoff_pause
+                            and self.last_game_tick_packet.game_info.is_kickoff_pause
+                        ):
+                            starting_kickoff = True
+                            # starting_kickoff is True the first frame of kickoff
 
-                # if game_tick_packet.game_info.is_kickoff_pause:
+                    # if starting_kickoff is True, we reset the kickoff sequence to be sure to start a new one
+                    if starting_kickoff:
+                        self.reset_kickoff()
 
-                #     # if first frame of kickoff, sleep
-                #     if self.kickoff_start_frame_num == 0:
-                #         self.reset_kickoff()
+                    # Prepare the controller state
+                    simple_controller_state = None
 
-                #     simple_controller_state = self.do_kickoff(game_tick_packet)
+                    if (
+                        game_tick_packet.game_ball.physics.location.x == 0
+                        and game_tick_packet.game_ball.physics.location.y == 0
+                        and not self.last_game_tick_packet.game_info.is_kickoff_pause
+                    ):
+                        simple_controller_state = SimpleControllerState()
 
-                # Retrieve the controller state from the bot if game_tick_packet is available
-                if not simple_controller_state and game_tick_packet:
+                    # Built-in kickoff handling
+
+                    if (
+                        self.built_in_kickoff
+                        and game_tick_packet.game_info.is_kickoff_pause
+                    ):
+
+                        simple_controller_state = self.do_kickoff(game_tick_packet)
+
+                    # Retrieve the controller state from the bot if game_tick_packet is available
+                    if not simple_controller_state and game_tick_packet:
+                        try:
+                            simple_controller_state = self.bot.get_output(
+                                game_tick_packet
+                            )
+                        except Exception as e:
+                            self.stop_writing()
+                            pass
+
+                    # If no controller state is returned, create a default one
+                    if not simple_controller_state:
+                        simple_controller_state = SimpleControllerState()
+
+
+                    # Convert the controller state to a bytearray
+                    bytearray_input = self.controller_to_input(simple_controller_state)
+
                     try:
-                        simple_controller_state = self.bot.get_output(game_tick_packet)
-                    except Exception as e:
+                        # Get the local players controllers to write the input
+                        local_players = game_event.get_local_players()
+                    except:
                         self.stop_writing()
+                        local_players = []
                         pass
+                    
+                    
+                    # Check if this is the end of the match
+                    
+                    if game_tick_packet.game_info.is_match_ended:
+                        self.stop_writing()
+                        return
 
-                # If no controller state is returned, create a default one
-                if not simple_controller_state:
-                    simple_controller_state = SimpleControllerState()
+                    # Check if there are local players
+                    if len(local_players) > 0:
 
-                # Convert the controller state to a bytearray
-                bytearray_input = self.controller_to_input(simple_controller_state)
+                        # Currently only supports one local player so we take the first one
+                        player_controller = local_players[0]
 
-                try:
-                    # Get the local players controllers to write the input
-                    local_players = game_event.get_local_players()
-                except:
-                    self.stop_writing()
-                    local_players = []
-                    pass
+                        # Construct the input address by adding an offset
+                        input_address = player_controller.address + 0x0990
 
-                # Check if there are local players
-                if len(local_players) > 0:
+                        # Write the input to memory
 
-                    # Currently only supports one local player so we take the first one
-                    player_controller = local_players[0]
+                        self.last_input = bytearray_input
+                        self.input_address = input_address
 
-                    # Construct the input address by adding an offset
-                    input_address = player_controller.address + 0x0990
+                        # Send new input to the memory writer
+                        self.mw.set_memory_data(input_address, bytearray_input)
 
-                    # Write the input to memory
+                        # at this stage, we can start the memory writer thread if it's not running
+                        if self.write_running == False:
+                            self.start_writing()
+                    else:
+                        self.stop_writing()
 
-                    self.last_input = bytearray_input
-                    self.input_address = input_address
+                    # Next lines are for monitoring purposes only and does not affect the bot
 
-                    # Send new input to the memory writer
-                    self.mw.set_memory_data(input_address, bytearray_input)
+                    if self.minimap:
+                        self.minimap.set_game_tick_packet(game_tick_packet, car_index)
 
-                    # at this stage, we can start the memory writer thread if it's not running
-                    if self.write_running == False:
-                        self.start_writing()
-                else:
-                    self.stop_writing()
+                    if self.monitoring:
 
-                # Next lines are for monitoring purposes only and does not affect the bot
-
-                if self.minimap:
-                    self.minimap.set_game_tick_packet(game_tick_packet, self.bot.index)
-
-                if self.monitoring:
-
-                    self.last_tick_duration = time.perf_counter() - tick_duration
-                    # show info each 10 frames
-                    if self.frame_num % 10 == 0:
-                        self.display_monitoring_info(
-                            game_tick_packet, simple_controller_state
-                        )
+                        self.last_tick_duration = time.perf_counter() - tick_duration
+                        # show info each 10 frames
+                        if self.frame_num % 10 == 0:
+                            self.display_monitoring_info(
+                                game_tick_packet, simple_controller_state
+                            )
 
     def on_key_pressed(self, event):
 
         if self.debug_keys:
-            print(Fore.LIGHTYELLOW_EX + "Key pressed: ", Fore.LIGHTGREEN_EX + event.key, Style.RESET_ALL)
-        
+            print(
+                Fore.LIGHTYELLOW_EX + "Key pressed: ",
+                Fore.LIGHTGREEN_EX + event.key,
+                Style.RESET_ALL,
+            )
 
         if event.key == self.config["bot_toggle_key"]:
 
@@ -437,7 +564,7 @@ class RLMarlbot:
     ##### RLBOT INTERFACE EMULATION #####
     #####################################
 
-    def generate_game_tick_packet(self, game_event: GameEvent):
+    def generate_game_tick_packet(self, game_event: GameEvent, cars=[]):
 
         game_tick_packet = GameTickPacket()
 
@@ -489,78 +616,62 @@ class RLMarlbot:
 
         game_tick_packet.game_info = game_info
 
-        pris = game_event.get_pris()
-
-        # filter only non spectator pris
-
-        pris = [pri for pri in pris if not pri.is_spectator()]
-
-        game_tick_packet.num_cars = len(pris)
-
         player_info_array_type = PlayerInfo * 64
 
         player_info_array = player_info_array_type()
 
-        for i, pri in enumerate(pris):
+        player_count = 0
+
+        for i, car in enumerate(cars):
             player_info = PlayerInfo()
 
-            # If player has no team, he is probably a spectator, so we skip him
+            # If player has missing required data, skip to next iteration
             try:
+                pri = car.get_pri()
                 team_info = pri.get_team_info()
                 player_info.team = team_info.get_index()
             except:
+                # go to next iteration
                 continue
 
+            player_info.physics.location.x = car.get_location().get_x()
+            player_info.physics.location.y = car.get_location().get_y()
+            player_info.physics.location.z = car.get_location().get_z()
+
+            # if player name is null, show location
+
+            player_info.physics.velocity.x = car.get_velocity().get_x()
+            player_info.physics.velocity.y = car.get_velocity().get_y()
+            player_info.physics.velocity.z = car.get_velocity().get_z()
+
+            player_info.physics.rotation.pitch = car.get_rotation().get_pitch()
+            player_info.physics.rotation.yaw = car.get_rotation().get_yaw()
+            player_info.physics.rotation.roll = car.get_rotation().get_roll()
+
+            player_info.physics.angular_velocity.x = car.get_angular_velocity().get_x()
+            player_info.physics.angular_velocity.y = car.get_angular_velocity().get_y()
+            player_info.physics.angular_velocity.z = car.get_angular_velocity().get_z()
+
+            player_info.has_wheel_contact = car.is_on_ground()
+            player_info.is_super_sonic = car.is_supersonic()
+
+            player_info.double_jumped = car.is_double_jumped()
+            player_info.jumped = car.is_jumped()
+
+            boost_component = car.get_boost_component()
             try:
-                car: Car = pri.get_car()
-            except:
-                car = None
 
-            if car:
-
-                player_info.physics.location.x = car.get_location().get_x()
-                player_info.physics.location.y = car.get_location().get_y()
-                player_info.physics.location.z = car.get_location().get_z()
-
-                player_info.physics.velocity.x = car.get_velocity().get_x()
-                player_info.physics.velocity.y = car.get_velocity().get_y()
-                player_info.physics.velocity.z = car.get_velocity().get_z()
-
-                player_info.physics.rotation.pitch = car.get_rotation().get_pitch()
-                player_info.physics.rotation.yaw = car.get_rotation().get_yaw()
-                player_info.physics.rotation.roll = car.get_rotation().get_roll()
-
-                player_info.physics.angular_velocity.x = (
-                    car.get_angular_velocity().get_x()
-                )
-                player_info.physics.angular_velocity.y = (
-                    car.get_angular_velocity().get_y()
-                )
-                player_info.physics.angular_velocity.z = (
-                    car.get_angular_velocity().get_z()
-                )
-
-                player_info.has_wheel_contact = car.is_on_ground()
-                player_info.is_super_sonic = car.is_supersonic()
-
-                player_info.double_jumped = car.is_double_jumped()
-                player_info.jumped = car.is_jumped()
-
-                boost_component = car.get_boost_component()
-                try:
-                    # round ceil
-                    player_info.boost = int(
-                        math.round(boost_component.get_amount() * 100)
-                    )
-                except:
-                    player_info.boost = 0
-            else:
-                # at this point, the car is not found, but the player has a team, so this is probably a demolished car
-                player_info.is_demolished = True
+                player_info.boost = int(round(boost_component.get_amount() * 100))
+            except Exception as e:
+              
+                player_info.boost = 0
 
             player_info.name = pri.get_player_name()
 
-            player_info_array[i] = player_info
+            player_info_array[player_count] = player_info
+            player_count += 1
+
+        game_tick_packet.num_cars = player_count
 
         game_tick_packet.game_cars = player_info_array
 
@@ -665,6 +776,7 @@ class RLMarlbot:
     def enable_bot(self):
         self.frame_num = 0
         self.bot_enabled = True
+        print(Fore.LIGHTGREEN_EX + "Bot enabled" + Style.RESET_ALL)
 
     def disable_bot(self):
 
@@ -692,58 +804,64 @@ class RLMarlbot:
         self.tick_counter = 0
         self.last_tick_duration = 0
 
-    def instantiate_bot(self, game_event: GameEvent, field_info: FieldInfoPacket):
-
-        local_player_controllers = game_event.get_local_players()
-
-        if len(local_player_controllers) == 0:
-            raise Exception("No local players found")
-
-        if len(local_player_controllers) > 1:
-            raise Exception("Multiple local players not supported")
-        player_controller = local_player_controllers[0]
-
-        player_pri = player_controller.get_pri()
-        player_name = player_pri.get_player_name()
-
-        if player_pri.is_spectator():
-            raise Exception("Player is spectator")
-
-        pris = game_event.get_pris()
-
-        for i, pri in enumerate(pris):
-            if pri.address == player_pri.address:
-                pri_index = i
-                break
-        else:
-            raise Exception("Player car not found")
-
-        try:
-            team_index = player_pri.get_team_info().get_index()
-        except:
-            raise Exception("Failed to get team index")
+    def instantiate_bot(
+        self,
+        game_event: GameEvent,
+        field_info: FieldInfoPacket,
+        player_name,
+        team_index,
+        car_index,
+    ):
 
         try:
             if self.bot_to_use == "nexto":
-                self.bot = Nexto(player_name, team_index, pri_index)
+                self.bot = Nexto(player_name, team_index, car_index)
                 self.bot.initialize_agent(self.field_info)
-                print(Fore.LIGHTGREEN_EX + "Nexto enabled" + Style.RESET_ALL)
+                print(Fore.LIGHTGREEN_EX + "Nexto agent created" + Style.RESET_ALL)
             elif self.bot_to_use == "necto":
-                self.bot = Necto(player_name, team_index, pri_index)
+                self.bot = Necto(player_name, team_index, car_index)
                 self.bot.initialize_agent(self.field_info)
-                print(Fore.LIGHTGREEN_EX + "Necto enabled" + Style.RESET_ALL)
+                print(Fore.LIGHTGREEN_EX + "Necto agent created" + Style.RESET_ALL)
             elif self.bot_to_use == "seer":
-                self.bot = Seer(player_name, team_index, pri_index)
+                self.bot = Seer(player_name, team_index, car_index)
                 self.bot.initialize_agent()
-                print(Fore.LIGHTGREEN_EX + "Seer enabled" + Style.RESET_ALL)
+                print(Fore.LIGHTGREEN_EX + "Seer agent created" + Style.RESET_ALL)
             if self.bot_to_use == "element":
-                self.bot = Element(player_name, team_index, pri_index)
+                self.bot = Element(player_name, team_index, car_index)
                 self.bot.initialize_agent(self.field_info)
-                print(Fore.LIGHTGREEN_EX + "Element enabled" + Style.RESET_ALL)
+                print(Fore.LIGHTGREEN_EX + "Element agent created" + Style.RESET_ALL)
         except Exception as e:
             print(Fore.RED + "Failed to instantiate bot: ", e, Style.RESET_ALL)
             self.bot = None
+            
+            
+    def start_clock(self):
+        
+        self.clock_thread = Thread(target=self.clock_loop)
+        self.clock_thread.daemon = True
+        self.clock_thread.start()
+        
+    def stop_clock(self):
+        self.clock_thread.join()
+        
+        
+    def clock_loop(self):
+        target_interval = 1 / 120  # intervalle cible en secondes
+        next_time = time.time() + target_interval
 
+        while True:
+            self.on_tick(None)
+            now = time.time()
+            sleep_time = next_time - now  # Calcul du temps jusqu'au prochain tick prévu
+
+            if sleep_time > 0:
+                time.sleep(sleep_time)
+            else:
+                # Si on_tick a pris plus de temps que prévu, ajuste le prochain tick
+                # pour ne pas dormir mais aussi pour recalculer le moment du prochain tick
+                next_time = now
+            
+            next_time += target_interval  # Prévoit le prochain tick
     ##########################
     ##### HELPER METHODS #####
     ##########################
@@ -1104,11 +1222,21 @@ if __name__ == "__main__":
     parser.add_argument(
         "-b", "--bot", type=str, help="Bot to use (nexto, necto, seer, element)"
     )
+    parser.add_argument(
+        "--kickoff",
+        action="store_true",
+        help="Override all bots kickoff with a default one that is pretty good. 1 to enable, 0 to disable",
+    )
 
     # Disable minimap
     parser.add_argument("--minimap", action="store_true", help="Enable minimap")
     parser.add_argument("--monitoring", action="store_true", help="Enable monitoring")
-    parser.add_argument("--debug-keys", action="store_true", help="Print all keys pressed in game in the console (Gamepad and Keyboard)")
+    parser.add_argument(
+        "--debug-keys",
+        action="store_true",
+        help="Print all keys pressed in game in the console (Gamepad and Keyboard)",
+    )
+    parser.add_argument("--clock", action="store_true", help="Sync ticks with an internal clock at 120Hz, cam help in case of unstable FPS ingame")
 
     args = parser.parse_args()
 
@@ -1118,6 +1246,9 @@ if __name__ == "__main__":
         minimap=args.minimap,
         monitoring=args.monitoring,
         debug_keys=args.debug_keys,
+        built_in_kickoff=args.kickoff,
+        clock=args.clock
+        
     )
 
     signal.signal(signal.SIGINT, bot.exit)
