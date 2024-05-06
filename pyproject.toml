@@ -6,19 +6,22 @@ authors = ["MarlburroW <nik0o@hotmail.com>"]
 readme = "README.md"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<3.13"
+python = "3.11.0"
 rlbot = "^1.67.7"
 rlgym-compat = "^1.1.0"
 numpy = "^1.26.4"
-torch = "^2.2.2"
+torch = "2.2.2"
 colorama = "^0.4.6"
 prompt-toolkit = "^3.0.43"
-pyinstaller = "^6.6.0"
 pygame = "^2.5.2"
 numba = "^0.59.1"
 scikit-learn = "^1.4.2"
-rlsdk-python = "^0.4.0"
 art = "^6.2"
+rlsdk-python = "0.4.2"
+setuptools = "66.1.1"
+
+[tool.poetry.group.dev.dependencies]
+pyinstaller = "6.6.0"
 
 [build-system]
 requires = ["poetry-core"]

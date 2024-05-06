@@ -1,3 +1,5 @@
+import warnings
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 from rlsdk_python import RLSDK, EventTypes, GameEvent, PRI, Ball, Car, PROCESS_NAME
 from rlsdk_python.events import EventPlayerTick, EventRoundActiveStateChanged
 from nexto.bot import Nexto
@@ -39,8 +41,11 @@ import os
 from rlgym_compat import GameState
 import numpy as np
 from element.sequences.speedflip import Speedflip
+import warnings
+warnings.simplefilter('default') 
+import traceback
 
-VERSION = "1.5.6"
+VERSION = "1.6.0"
 
 
 class RLMarlbot:
@@ -53,7 +58,8 @@ class RLMarlbot:
         monitoring=False,
         debug_keys=None,
         built_in_kickoff=False,
-        clock=False
+        clock=False,
+        debug=False,
     ):
         just_fix_windows_console()
 
@@ -75,6 +81,7 @@ class RLMarlbot:
         self.debug_keys = debug_keys
         self.built_in_kickoff = built_in_kickoff
         self.clock = clock
+        self.debug = debug
 
         try:
             with open("config.json", "r") as f:
@@ -120,6 +127,7 @@ class RLMarlbot:
             print("2. Necto")
             print("3. Seer (old version)")
             print("4. Element")
+  
 
             answer = prompt("Your choice (1/2/3/4): ")
 
@@ -155,7 +163,7 @@ class RLMarlbot:
             self.minimap_thread.daemon = True
             self.minimap_thread.start()
 
-        print(Fore.LIGHTBLUE_EX + "Starting memory writer..." + Style.RESET_ALL)
+        print(Fore.LIGHTBLUE_EX + "Instanciating memory writer..." + Style.RESET_ALL)
 
         self.mw = memory_writer.MemoryWriter()
 
@@ -212,6 +220,7 @@ class RLMarlbot:
         
         if self.clock:
             self.start_clock()
+            print(Fore.LIGHTYELLOW_EX + "Python based clock started" + Style.RESET_ALL)
 
         print(
             Fore.LIGHTYELLOW_EX
@@ -237,7 +246,8 @@ class RLMarlbot:
             self.reset_inputs()
 
     def on_game_event_destroyed(self, event: GameEvent):
-        print(Fore.LIGHTRED_EX + "Game event destroyed" + Style.RESET_ALL)
+        if self.debug:
+            print(Fore.LIGHTRED_EX + "Game event destroyed" + Style.RESET_ALL)
         self.stop_writing()
         self.reset_virtual_seconds_elapsed()
         self.reset_info()
@@ -280,7 +290,8 @@ class RLMarlbot:
         # Get the game event from the SDK at each tick
         try:
             game_event = self.sdk.get_game_event()
-        except:
+        except Exception as e:
+            self.debug_exception(e)
             self.stop_writing()
             pass
 
@@ -288,7 +299,8 @@ class RLMarlbot:
         if not self.field_info and game_event:
             try:
                 self.generate_field_info()
-            except:
+            except Exception as e:
+                self.debug_exception(e)
                 self.stop_writing()
                 pass
 
@@ -308,7 +320,8 @@ class RLMarlbot:
                 player_controller = local_player_controllers[0]
 
                 player_pri = player_controller.get_pri()
-            except:
+            except Exception as e:
+                self.debug_exception(e)
                 self.stop_writing()
                 # if the player PRI can't be retrieved, we stop the memory writer and return, because we can't continue without it
                 return
@@ -319,7 +332,8 @@ class RLMarlbot:
 
             try:
                 player_car = player_pri.get_car()
-            except:
+            except Exception as e:
+                self.debug_exception(e)
                 self.stop_writing()
                 # if the player car can't be retrieved, we stop the memory writer and return, because we can't continue without it
                 return
@@ -328,8 +342,9 @@ class RLMarlbot:
 
             try:
                 player_name = player_pri.get_player_name()
-            except:
+            except Exception as e:
                 # if we can't get the player name it doesn't matter, we can continue
+                self.debug_exception(e)
                 player_name = "Unknown"
                 pass
 
@@ -346,15 +361,17 @@ class RLMarlbot:
                         break
                 else:
                     raise Exception("Player car not found")
-            except:
+            except Exception as e:
+                self.debug_exception(e)
                 self.stop_writing()
                 return
 
             # Find the team index
             try:
                 team_index = player_pri.get_team_info().get_index()
-            except:
+            except Exception as e:
                 # if the player has no team info, it means he is probably a spectator, so we stop the memory writer and return
+                self.debug_exception(e)
                 self.stop_writing()
                 return
 
@@ -364,7 +381,8 @@ class RLMarlbot:
                     self.instantiate_bot(
                         game_event, self.field_info, player_name, team_index, car_index
                     )
-                except:
+                except Exception as e:
+                    self.debug_exception(e)
                     self.stop_writing()
                     pass
 
@@ -382,6 +400,7 @@ class RLMarlbot:
                     game_tick_packet = self.generate_game_tick_packet(game_event, cars)
                     self.last_game_tick_packet = game_tick_packet
                 except Exception as e:
+                    self.debug_exception(e)
                     self.stop_writing()
                     pass
                 
@@ -421,14 +440,21 @@ class RLMarlbot:
                     ):
 
                         simple_controller_state = self.do_kickoff(game_tick_packet)
+                        
+                       
+                           
 
                     # Retrieve the controller state from the bot if game_tick_packet is available
                     if not simple_controller_state and game_tick_packet:
                         try:
+                            
+                      
+                            
                             simple_controller_state = self.bot.get_output(
                                 game_tick_packet
                             )
                         except Exception as e:
+                            self.debug_exception(e)
                             self.stop_writing()
                             pass
 
@@ -443,7 +469,8 @@ class RLMarlbot:
                     try:
                         # Get the local players controllers to write the input
                         local_players = game_event.get_local_players()
-                    except:
+                    except Exception as e:
+                        self.debug_exception(e)
                         self.stop_writing()
                         local_players = []
                         pass
@@ -526,7 +553,8 @@ class RLMarlbot:
 
         self.mw.start()
         self.write_running = True
-        print(Fore.LIGHTBLUE_EX + "Memory writer thread started" + Style.RESET_ALL)
+        if self.debug:
+            print(Fore.LIGHTBLUE_EX + "Memory writer thread started" + Style.RESET_ALL)
 
     def stop_writing(self):
         if not self.write_running:
@@ -541,8 +569,9 @@ class RLMarlbot:
             time.sleep(0.1)
 
         self.mw.stop()
-
-        print(Fore.LIGHTRED_EX + "Memory writer thread stopped" + Style.RESET_ALL)
+        
+        if self.debug:
+            print(Fore.LIGHTRED_EX + "Memory writer thread stopped" + Style.RESET_ALL)
 
     def reset_inputs(self):
         if self.input_address:
@@ -630,7 +659,8 @@ class RLMarlbot:
                 pri = car.get_pri()
                 team_info = pri.get_team_info()
                 player_info.team = team_info.get_index()
-            except:
+            except Exception as e:
+                self.debug_exception(e)
                 # go to next iteration
                 continue
 
@@ -663,7 +693,7 @@ class RLMarlbot:
 
                 player_info.boost = int(round(boost_component.get_amount() * 100))
             except Exception as e:
-              
+                self.debug_exception(e)
                 player_info.boost = 0
 
             player_info.name = pri.get_player_name()
@@ -779,9 +809,10 @@ class RLMarlbot:
         print(Fore.LIGHTGREEN_EX + "Bot enabled" + Style.RESET_ALL)
 
     def disable_bot(self):
-
+        self.reset_inputs()
         self.stop_writing()
         self.reset_info()
+        
 
         if self.minimap:
             self.minimap.disable()
@@ -830,6 +861,7 @@ class RLMarlbot:
                 self.bot = Element(player_name, team_index, car_index)
                 self.bot.initialize_agent(self.field_info)
                 print(Fore.LIGHTGREEN_EX + "Element agent created" + Style.RESET_ALL)
+
         except Exception as e:
             print(Fore.RED + "Failed to instantiate bot: ", e, Style.RESET_ALL)
             self.bot = None
@@ -950,7 +982,7 @@ class RLMarlbot:
                 controls.jump = self.kickoff_action[5] > 0
                 controls.boost = self.kickoff_action[6] > 0
                 controls.handbrake = self.kickoff_action[7] > 0
-
+              
                 return controls
         except Exception as e:
             print(Fore.RED + "Failed to do kickoff: ", e, Style.RESET_ALL)
@@ -966,6 +998,20 @@ class RLMarlbot:
     ########################
     ##### MONITORING ######
     ########################
+    
+    
+    def debug_exception(self, e):
+        if not self.debug:
+            return
+        # Display the exception message, file and line number
+        print(Fore.RED + "Exception: ", e, Style.RESET_ALL)
+        print(Fore.RED + "File: ", e.__traceback__.tb_frame.f_code.co_filename, Style.RESET_ALL)
+        print(Fore.RED + "Line: ", e.__traceback__.tb_lineno, Style.RESET_ALL)
+        
+        # show 3 last lines of the traceback
+        
+        traceback.print_tb(e.__traceback__)
+    
 
     def display_monitoring_info(self, game_tick_packet, controller):
 
@@ -1236,7 +1282,8 @@ if __name__ == "__main__":
         action="store_true",
         help="Print all keys pressed in game in the console (Gamepad and Keyboard)",
     )
-    parser.add_argument("--clock", action="store_true", help="Sync ticks with an internal clock at 120Hz, cam help in case of unstable FPS ingame")
+    parser.add_argument("--clock", action="store_true", help="Sync ticks with an internal clock at 120Hz, can help in case of unstable FPS ingame")
+    parser.add_argument("--debug", action="store_true", help="Show debug information in the console")
 
     args = parser.parse_args()
 
@@ -1247,7 +1294,8 @@ if __name__ == "__main__":
         monitoring=args.monitoring,
         debug_keys=args.debug_keys,
         built_in_kickoff=args.kickoff,
-        clock=args.clock
+        clock=args.clock,
+        debug=args.debug
         
     )
 
