@@ -17,7 +17,7 @@ I recommend to look at the RLSDK-Python repository to understand how the bot wor
 ## CLI Options
 
 ```bash
-usage: main.py [-h] [-p PID] [-b BOT] [--minimap] [--monitoring]
+usage: main.py [-h] [-p PID] [-b BOT] [--kickoff] [--minimap] [--monitoring] [--debug-keys] [--clock] [--debug]
 
 RLMarlbot
 
@@ -25,8 +25,12 @@ options:
   -h, --help         show this help message and exit
   -p PID, --pid PID  Rocket League process ID
   -b BOT, --bot BOT  Bot to use (nexto, necto, seer, element)
+  --kickoff          Override all bots kickoff with a default one that is pretty good. 1 to enable, 0 to disable
   --minimap          Enable minimap
   --monitoring       Enable monitoring
+  --debug-keys       Print all keys pressed in game in the console (Gamepad and Keyboard)
+  --clock            Sync ticks with an internal clock at 120Hz, can help in case of unstable FPS ingame
+  --debug            Show debug information in the console
 ```
 
 
