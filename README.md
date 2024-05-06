@@ -16,7 +16,7 @@ I recommend to look at the RLSDK-Python repository to understand how the bot wor
 
 ## CLI Options
 
-```bash
+```
 usage: main.py [-h] [-p PID] [-b BOT] [--kickoff] [--minimap] [--monitoring] [--debug-keys] [--clock] [--debug]
 
 RLMarlbot
