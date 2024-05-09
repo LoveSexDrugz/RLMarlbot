@@ -87,9 +87,9 @@ https://discord.gg/RLMarlbot
 ## Credits
 
 - **Rolv-Arild** - Necto/Nexto model + RLBot agent
+- **Kxqs**: For his discord management, his good ideas and his feedback
 - **Thorami**: For giving me some very useful tips, especially on how to obtain the base addresses of GNames and GObjects.
 - **Kandda**: Made the Marlbot logo
 - **RLBot**: For having created a standard interface for bot creation.
 - **Bardak**: For testing
-- **Kxqs**: For help the community and his feedbacks
 - **AScriver**: Contribute to improve the RLSDK
