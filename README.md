@@ -79,7 +79,7 @@ RLMarlbot is a bot that uses the RLSDK Python package to read data from RocketLe
 
 ## Discord
 I created a discord so the community can discuss improvements, bugs, or just help each other.
-https://discord.gg/pfsBQAqZ
+[https://discord.gg/pfsBQAqZ](https://discord.gg/EcsCWGEt67)
 
 ## Credits
 
