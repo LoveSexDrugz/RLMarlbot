@@ -1,4 +1,4 @@
-![image](https://github.com/MarlBurroW/RLMarlbot/assets/3024430/2841188b-1bdd-4946-8101-560d2daaf66e)
+![image](https://github.com/MarlBurroW/RLMarlbot/assets/3024430/68bcbce7-545a-4ae6-b3b7-ab44fae8ad55)
 
 
 # RLMarlbot
