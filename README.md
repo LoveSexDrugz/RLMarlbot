@@ -1,3 +1,6 @@
+![image](https://github.com/MarlBurroW/RLMarlbot/assets/3024430/68bcbce7-545a-4ae6-b3b7-ab44fae8ad55)
+
+
 # RLMarlbot
 
 Bot player based on my [python SDK](https://github.com/MarlBurroW/RLSDK-Python) and RLBot standard.
@@ -16,8 +19,8 @@ I recommend to look at the RLSDK-Python repository to understand how the bot wor
 
 ## CLI Options
 
-```bash
-usage: main.py [-h] [-p PID] [-b BOT] [--minimap] [--monitoring]
+```
+usage: main.py [-h] [-p PID] [-b BOT] [--kickoff] [--minimap] [--monitoring] [--debug-keys] [--clock] [--debug]
 
 RLMarlbot
 
@@ -25,8 +28,12 @@ options:
   -h, --help         show this help message and exit
   -p PID, --pid PID  Rocket League process ID
   -b BOT, --bot BOT  Bot to use (nexto, necto, seer, element)
+  --kickoff          Override all bots kickoff with a default one that is pretty good. 1 to enable, 0 to disable
   --minimap          Enable minimap
   --monitoring       Enable monitoring
+  --debug-keys       Print all keys pressed in game in the console (Gamepad and Keyboard)
+  --clock            Sync ticks with an internal clock at 120Hz, can help in case of unstable FPS ingame
+  --debug            Show debug information in the console
 ```
 
 
@@ -75,13 +82,14 @@ RLMarlbot is a bot that uses the RLSDK Python package to read data from RocketLe
 
 ## Discord
 I created a discord so the community can discuss improvements, bugs, or just help each other.
-https://discord.gg/pfsBQAqZ
+https://discord.gg/RLMarlbot
 
 ## Credits
 
 - **Rolv-Arild** - Necto/Nexto model + RLBot agent
+- **Kxqs**: For his discord management, his good ideas and his feedback
 - **Thorami**: For giving me some very useful tips, especially on how to obtain the base addresses of GNames and GObjects.
+- **Kandda**: Made the Marlbot logo
 - **RLBot**: For having created a standard interface for bot creation.
 - **Bardak**: For testing
-- **Kxqs**: For help the community and his feedbacks
 - **AScriver**: Contribute to improve the RLSDK
