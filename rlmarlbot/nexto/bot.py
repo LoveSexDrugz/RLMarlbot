@@ -63,7 +63,7 @@ class Nexto(BaseAgent):
         self.demoCalloutCount = 0
         self.lastPacket = None
 
-        print('Nexto Ready - Index:', index)
+        print('Nexto Ready - Index:', index, 'Beta:', str(beta))   
         print("Remember to run Nexto at 120fps with vsync off! "
               "Stable 240/360 is second best if that's better for your eyes")
         print("Also check out the RLGym Twitch stream to watch live bot training and occasional showmatches!")
